@@ -44,6 +44,8 @@ dependencies {
     implementation("com.github.pedroSG94.RootEncoder:library:2.3.3")
     implementation("com.github.AppIntro:AppIntro:6.3.1")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.datastore:datastore-preferences-rxjava3:1.0.0")
+    implementation("androidx.preference:preference:1.2.1")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

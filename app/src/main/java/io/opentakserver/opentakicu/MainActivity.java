@@ -32,6 +32,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.core.view.GravityCompat;
+import androidx.datastore.preferences.core.Preferences;
+import androidx.datastore.preferences.rxjava3.RxPreferenceDataStoreBuilder;
+import androidx.datastore.rxjava3.RxDataStore;
 import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.navigation.NavigationView;
 import com.pedro.common.ConnectChecker;
@@ -62,7 +65,9 @@ public class MainActivity extends AppCompatActivity
 
     private final String LOGTAG = "MainActivity";
     private final ArrayList<String> PERMISSIONS = new ArrayList<>();
-    private Integer[] orientations = new Integer[] { 0, 90, 180, 270 };
+    private final Integer[] orientations = new Integer[] { 0, 90, 180, 270 };
+    private final Context context = this;
+    private final RxDataStore<Preferences> prefsDataStore = new RxPreferenceDataStoreBuilder(context, "settings").build();
 
     private RtspCamera1 rtspCamera1;
     private SurfaceView surfaceView;
@@ -225,7 +230,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        //getMenuInflater().inflate(R.menu.menu, menu);
+        getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
@@ -239,14 +244,9 @@ public class MainActivity extends AppCompatActivity
                 drawerLayout.closeDrawer(GravityCompat.START);
             }
             return true;
-        } else if (itemId == R.id.microphone) {
-            if (!rtspCamera1.isAudioMuted()) {
-                item.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.icon_microphone_off, null));
-                rtspCamera1.disableAudio();
-            } else {
-                item.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.icon_microphone, null));
-                rtspCamera1.enableAudio();
-            }
+        } else if (itemId == R.id.action_settings) {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
             return true;
         }
         return false;

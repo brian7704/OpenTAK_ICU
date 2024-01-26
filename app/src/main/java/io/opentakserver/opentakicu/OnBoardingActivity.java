@@ -52,24 +52,9 @@ public class OnBoardingActivity extends AppIntro {
     private static final String WELCOME_SLIDE = "welcome_slide";
     private static final String PERMISSIONS_SLIDE = "permissions_slide";
     private static final String BACKGROUND_LOCATION_SLIDE = "background_location_slide";
-    private static final String STORAGE_PERMISSION_SLIDE = "storage_permission_slide";
-    private static final String OUI_SLIDE = "oui_slide";
-    private static final String ROOT_SLIDE = "root_slide";
-    private static final String SENTINEL_SERVER_SLIDE = "sentinel_server_slide";
     private static final String FINALIZE_SLIDE = "finalize_slide";
-    private static Handler UIHandler = new Handler(Looper.getMainLooper());
 
     public static class CustomLayout extends Fragment implements SlidePolicy {
-        private static LinearLayout username_layout;
-        private static LinearLayout password_layout;
-        private static TextView username_label;
-        private static TextView password_label;
-        private static HashMap<CharSequence, EditText> usernameEditText = new HashMap<>();
-        private static HashMap<CharSequence, EditText> passwordEditText = new HashMap<>();
-        private static Button button;
-        private static TextView description;
-        private static HashMap<CharSequence, TextView> ouiStatus = new HashMap<>();
-        private static HashMap<CharSequence, ProgressBar> progressBar = new HashMap<>();
 
         @Override
         public View onCreateView(LayoutInflater layoutInflater, ViewGroup container, Bundle savedInstance) {
@@ -129,48 +114,6 @@ public class OnBoardingActivity extends AppIntro {
             Bundle args = getArguments();
             CharSequence id = args.getCharSequence("slide_id");
             Log.d(LOGTAG, "onViewCreated " + id);
-            username_layout = view.findViewById(R.id.username_linear_layout);
-            password_layout = view.findViewById(R.id.password_linear_layout);
-            username_label = view.findViewById(R.id.username_label);
-            password_label = view.findViewById(R.id.password_label);
-            usernameEditText.put(id, view.findViewById(R.id.username));
-            passwordEditText.put(id, view.findViewById(R.id.password));
-            button = view.findViewById(R.id.button);
-            description = view.findViewById(R.id.description);
-            ouiStatus.put(id, view.findViewById(R.id.oui_status));
-            progressBar.put(id, view.findViewById(R.id.progress_bar));
-
-            if (id.equals(WELCOME_SLIDE) || id.equals(PERMISSIONS_SLIDE) || id.equals(BACKGROUND_LOCATION_SLIDE)) {
-                username_layout.setVisibility(View.GONE);
-                password_layout.setVisibility(View.GONE);
-                button.setVisibility(View.GONE);
-                ouiStatus.get(id).setVisibility(View.GONE);
-                progressBar.get(id).setVisibility(View.GONE);
-            }
-            else if (id.equals(SENTINEL_SERVER_SLIDE)) {
-                progressBar.get(id).setVisibility(View.GONE);
-                button.setText(R.string.save);
-                button.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-
-                    }
-                });
-            }
-            else if (id.equals(FINALIZE_SLIDE)) {
-                username_layout.setVisibility(View.GONE);
-                password_layout.setVisibility(View.GONE);
-                ouiStatus.get(id).setVisibility(View.VISIBLE);
-                progressBar.get(id).setVisibility(View.GONE);
-                button.setVisibility(View.VISIBLE);
-                button.setText("removeme");
-                button.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-
-                    }
-                });
-            }
         }
 
         @Override
@@ -236,9 +179,6 @@ public class OnBoardingActivity extends AppIntro {
                     getString(R.string.storage_permission_description),
                     R.mipmap.ic_launcher, true, STORAGE_PERMISSION_SLIDE));*/
         }
-
-        addSlide(CustomLayout.createInstance(getString(R.string.tak_server), getText(R.string.server_info),
-                R.mipmap.ic_launcher, true, SENTINEL_SERVER_SLIDE));
 
         addSlide(CustomLayout.createInstance(getString(R.string.finished),
                 getText(R.string.finished_onboarding),

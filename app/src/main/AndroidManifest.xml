@@ -31,7 +31,6 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.OpenTAKICU">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -41,6 +40,7 @@
         </activity>
 
         <activity android:name="OnBoardingActivity" />
+        <activity android:name="SettingsActivity" />
     </application>
 
 </manifest>
