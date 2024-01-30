@@ -33,7 +33,7 @@ public class PathUtils {
 
   public static File getRecordPath() {
     File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
-    return new File(storageDir.getAbsolutePath() + "/RootEncoder");
+    return new File(storageDir.getAbsolutePath() + "/OpenTAKICU");
   }
 
   public static File getRecordPath(Context context) {

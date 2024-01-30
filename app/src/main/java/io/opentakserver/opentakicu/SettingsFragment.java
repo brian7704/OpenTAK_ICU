@@ -8,6 +8,7 @@ import com.pedro.common.ConnectChecker;
 import com.pedro.library.rtsp.RtspCamera2;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.preference.ListPreference;
@@ -33,10 +34,15 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Connec
         ArrayList<String> resolutionsList = new ArrayList<>();
         ArrayList<String> resolutionsInts = new ArrayList<>();
         int x = 0;
+        List<Size> frontResolutions = rtspCamera2.getResolutionsFront();
+
+        // Only get resolutions supported by both cameras
         for (Size res : rtspCamera2.getResolutionsBack()) {
-            resolutionsList.add(res.getWidth() + " x " + res.getHeight());
-            resolutionsInts.add(String.valueOf(x));
-            x++;
+            if (frontResolutions.contains(res)) {
+                resolutionsList.add(res.getWidth() + " x " + res.getHeight());
+                resolutionsInts.add(String.valueOf(x));
+                x++;
+            }
         }
         resolutions.setEntries(resolutionsList.toArray(new CharSequence[resolutionsList.size()]));
         resolutions.setEntryValues(resolutionsInts.toArray(new CharSequence[resolutionsInts.size()]));

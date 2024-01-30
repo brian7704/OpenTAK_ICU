@@ -23,4 +23,10 @@
         <item>30</item>
         <item>60</item>
     </string-array>
+
+    <string-array name="codecs">
+        <item>H264</item>
+        <item>H265</item>
+        <item>AV1</item>
+    </string-array>
 </resources>

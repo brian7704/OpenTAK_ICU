@@ -12,12 +12,9 @@ public class SettingsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
-        if (getSupportActionBar() != null)
-            getSupportActionBar().setTitle("Settings");
-
         FragmentManager fm = getSupportFragmentManager();
         fm.beginTransaction()
-                .add(R.id.idFrameLayout, new SettingsFragment(), "SOMEFUCKINGLOGTAG")
+                .replace(R.id.idFrameLayout, new SettingsFragment(), "")
                 .commit();
     }
 }

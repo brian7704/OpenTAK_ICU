@@ -3,45 +3,56 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <PreferenceCategory android:title="Server Settings">
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="stream_video"
+            android:title="@string/stream_video" />
         <ListPreference
             android:defaultValue="1"
             android:entries="@array/protocols"
             android:entryValues="@array/protocols"
             android:key="protocol"
-            android:title="Protocol" />
+            android:title="Protocol"
+            android:dependency="stream_video"/>
         <EditTextPreference
             android:defaultValue="example.com"
             android:key="address"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="Address"
-            app:summary="IP address or domain name of the server" />
+            app:summary="IP address or domain name of the server"
+            android:dependency="stream_video" />
         <EditTextPreference
             android:key="port"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="Port"
-            app:defaultValue="8554" />
+            app:defaultValue="8554"
+            android:dependency="stream_video" />
         <EditTextPreference
             android:key="path"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Path" />
+            android:title="Path"
+            android:dependency="stream_video" />
         <EditTextPreference
             android:key="username"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Username" />
+            android:title="Username"
+            android:dependency="stream_video" />
         <EditTextPreference
             android:key="password"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Password" />
+            android:title="Password"
+            android:dependency="stream_video" />
         <SwitchPreference
             android:defaultValue="true"
             android:key="tcp"
             android:title="Use TCP"
-            app:summary="Enable for better reliability. May cause slight performance issues." />
+            app:summary="Required if the server is behind a firewall or NAT."
+            android:dependency="stream_video" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="Video Settings">
@@ -63,39 +74,50 @@
             android:entryValues="@array/fps"
             android:key="fps"
             android:title="FPS" />
+        <ListPreference
+            android:key="codec"
+            android:title="@string/codec"
+            android:entries="@array/codecs" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="record"
+            android:title="@string/record_video" />
     </PreferenceCategory>
-    <EditTextPreference
-        android:defaultValue="h265"
-        android:key="codec"
-        android:selectAllOnFocus="true"
-        android:singleLine="true"
-        android:title="Codec" />
-    <PreferenceCategory android:title="Audio Settings">
 
+    <PreferenceCategory android:title="Audio Settings">
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="enable_audio"
+            android:title="@string/enable_audio" />
+        <EditTextPreference
+            android:defaultValue="128"
+            android:key="audio_bitrate"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/audio_bitrate"
+            android:dependency="enable_audio" />
+        <EditTextPreference
+            android:defaultValue="44100"
+            android:key="samplerate"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/samplerate"
+            android:dependency="enable_audio" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="stereo"
+            android:title="Stereo"
+            app:summary="Disable for mono"
+            android:dependency="enable_audio" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="echo_cancel"
+            android:title="@string/echo_canceler"
+            android:dependency="enable_audio" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="noise_reduction"
+            android:title="@string/noise_suppressor"
+            android:dependency="enable_audio" />
     </PreferenceCategory>
-    <EditTextPreference
-        android:defaultValue="128"
-        android:key="audio_bitrate"
-        android:selectAllOnFocus="true"
-        android:singleLine="true"
-        android:title="@string/audio_bitrate" />
-    <EditTextPreference
-        android:defaultValue="44100"
-        android:key="samplerate"
-        android:selectAllOnFocus="true"
-        android:singleLine="true"
-        android:title="@string/samplerate" />
-    <SwitchPreference
-        android:defaultValue="true"
-        android:key="stereo"
-        android:title="Stereo"
-        app:summary="Disable for mono" />
-    <SwitchPreference
-        android:defaultValue="true"
-        android:key="echo_cancel"
-        android:title="@string/echo_canceler" />
-    <SwitchPreference
-        android:defaultValue="true"
-        android:key="noise_reduction"
-        android:title="@string/noise_suppressor" />
 </PreferenceScreen>

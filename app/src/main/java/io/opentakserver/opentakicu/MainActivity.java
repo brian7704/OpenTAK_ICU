@@ -33,7 +33,9 @@ import com.pedro.encoder.input.video.CameraOpenException;
 import androidx.preference.PreferenceManager;
 import io.opentakserver.opentakicu.utils.PathUtils;
 
+import com.pedro.library.rtmp.RtmpCamera2;
 import com.pedro.library.rtsp.RtspCamera2;
+import com.pedro.library.srt.SrtCamera2;
 import com.pedro.library.view.OpenGlView;
 import com.pedro.rtsp.rtsp.Protocol;
 
@@ -44,6 +46,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity
@@ -55,8 +58,11 @@ public class MainActivity extends AppCompatActivity
     SharedPreferences pref;
 
     private RtspCamera2 rtspCamera2;
+    private RtmpCamera2 rtmpCamera2;
+    private SrtCamera2 srtCamera2;
     private OpenGlView openGlView;
-    private Button bStartStop, bRecord;
+    private FloatingActionButton bStartStop;
+    private FloatingActionButton flashlight;
     private String currentDateAndTime = "";
     private File folder;
     //options menu
@@ -75,6 +81,9 @@ public class MainActivity extends AppCompatActivity
     private boolean noise_reduction;
     private int fps;
     private Size resolution;
+    private boolean record;
+    private boolean stream;
+    private boolean enable_audio;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,7 +102,7 @@ public class MainActivity extends AppCompatActivity
         openGlView.setOnTouchListener(this);
 
         settingsButton = findViewById(R.id.settingsButton);
-        settingsButton.setOnTouchListener(this);
+        settingsButton.setOnClickListener(this);
 
         if (!hasPermissions(this, PERMISSIONS)) {
             Intent intent = new Intent(MainActivity.this, OnBoardingActivity.class);
@@ -102,15 +111,21 @@ public class MainActivity extends AppCompatActivity
         }
 
         rtspCamera2 = new RtspCamera2(openGlView, this);
+        rtmpCamera2 = new RtmpCamera2(openGlView, this);
+        srtCamera2 = new SrtCamera2(openGlView, this);
+
         getSettings();
 
         tvBitrate = findViewById(R.id.tv_bitrate);
         bStartStop = findViewById(R.id.b_start_stop);
         bStartStop.setOnClickListener(this);
-        bRecord = findViewById(R.id.b_record);
-        bRecord.setOnClickListener(this);
-        Button switchCamera = findViewById(R.id.switch_camera);
+        FloatingActionButton switchCamera = findViewById(R.id.switch_camera);
         switchCamera.setOnClickListener(this);
+
+        flashlight = findViewById(R.id.flashlight);
+        flashlight.setOnClickListener(this);
+
+        prepareEncoders();
     }
 
     private void lockScreenOrientation() {
@@ -179,8 +194,9 @@ public class MainActivity extends AppCompatActivity
     public void onClick(View v) {
         int id = v.getId();
         if (id == R.id.b_start_stop) {
-            if (!rtspCamera2.isStreaming()) {
-                bStartStop.setText(getResources().getString(R.string.stop_button));
+            if (!rtspCamera2.isStreaming() && !rtspCamera2.isRecording()) {
+                bStartStop.setImageResource(R.drawable.stop);
+
                 if (pref.getBoolean("tcp", true)) {
                     rtspCamera2.getStreamClient().setProtocol(Protocol.TCP);
                 } else {
@@ -198,8 +214,14 @@ public class MainActivity extends AppCompatActivity
 
                     if (!rtspCamera2.isAutoFocusEnabled())
                         rtspCamera2.enableAutoFocus();
-                    rtspCamera2.startStream(url);
+
+                    if (stream) {
+                        rtspCamera2.startStream(url);
+                        Log.d(LOGTAG, "Started stream to " + url);
+                    }
+
                     lockScreenOrientation();
+                    startRecording();
                 } else {
                     //If you see this all time when you start stream,
                     //it is because your encoder device doesn't support the configuration
@@ -208,54 +230,14 @@ public class MainActivity extends AppCompatActivity
                     //change encoder and try
                     Toast.makeText(this, "Error preparing stream, This device cant do it",
                             Toast.LENGTH_SHORT).show();
-                    bStartStop.setText(getResources().getString(R.string.start_button));
+                    bStartStop.setImageResource(R.drawable.ic_record);
                 }
             } else {
-                bStartStop.setText(getResources().getString(R.string.start_button));
-                rtspCamera2.stopStream();
+                bStartStop.setImageResource(R.drawable.ic_record);
+                if (rtspCamera2.isStreaming())
+                    rtspCamera2.stopStream();
+                stopRecording();
                 unlockScreenOrientation();
-            }
-        } else if (id == R.id.b_record) {
-            if (!rtspCamera2.isRecording()) {
-                try {
-                    if (!folder.exists()) {
-                        folder.mkdir();
-                    }
-                    SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
-                    currentDateAndTime = sdf.format(new Date());
-                    if (!rtspCamera2.isStreaming()) {
-                        if (prepareEncoders()) {
-                            rtspCamera2.startRecord(
-                                    folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
-                            lockScreenOrientation();
-                            bRecord.setText(R.string.stop_record);
-                            Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
-                        } else {
-                            Toast.makeText(this, "Error preparing stream, This device cant do it",
-                                    Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        rtspCamera2.startRecord(
-                                folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
-                        lockScreenOrientation();
-                        bRecord.setText(R.string.stop_record);
-                        Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
-                    }
-                } catch (IOException e) {
-                    rtspCamera2.stopRecord();
-                    unlockScreenOrientation();
-                    PathUtils.updateGallery(this, folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
-                    bRecord.setText(R.string.start_record);
-                    Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            } else {
-                rtspCamera2.stopRecord();
-                unlockScreenOrientation();
-                PathUtils.updateGallery(this, folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
-                bRecord.setText(R.string.start_record);
-                Toast.makeText(this,
-                        "file " + currentDateAndTime + ".mp4 saved in " + folder.getAbsolutePath(),
-                        Toast.LENGTH_SHORT).show();
             }
         } else if (id == R.id.switch_camera) {
             try {
@@ -264,14 +246,68 @@ public class MainActivity extends AppCompatActivity
                 Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
             }
             //options menu
+        } else if (id == R.id.settingsButton) {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
+        } else if (id == R.id.flashlight) {
+            if (rtspCamera2.isLanternEnabled())
+                rtspCamera2.disableLantern();
+            else {
+                try {
+                    rtspCamera2.enableLantern();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    private void startRecording() {
+        if (record) {
+            try {
+                if (!folder.exists()) {
+                    folder.mkdir();
+                }
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
+                currentDateAndTime = sdf.format(new Date());
+                if (!rtspCamera2.isStreaming()) {
+                    if (prepareEncoders()) {
+                        rtspCamera2.startRecord(
+                                folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
+                        lockScreenOrientation();
+                        Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "Error preparing stream, This device cant do it",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    rtspCamera2.startRecord(
+                            folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
+                    lockScreenOrientation();
+                    Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
+                }
+            } catch (IOException e) {
+                rtspCamera2.stopRecord();
+                unlockScreenOrientation();
+                PathUtils.updateGallery(this, folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
+                Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void stopRecording() {
+        if (rtspCamera2.isRecording()) {
+            rtspCamera2.stopRecord();
+            unlockScreenOrientation();
+            PathUtils.updateGallery(this, folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
+            Toast.makeText(this,
+                    "file " + currentDateAndTime + ".mp4 saved in " + folder.getAbsolutePath(),
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
     private boolean prepareEncoders() {
         Log.d(LOGTAG, "prepareEncoders");
-        int res = Integer.parseInt(pref.getString("resolution", "0"));
-        Log.d(LOGTAG, "Setting resolution to " + rtspCamera2.getResolutionsBack().get(res));
-        Size resolution = rtspCamera2.getResolutionsBack().get(res);
         int width = resolution.getWidth();
         int height = resolution.getHeight();
         int fps = Integer.parseInt(pref.getString("fps", "30"));
@@ -283,17 +319,27 @@ public class MainActivity extends AppCompatActivity
         boolean noise_reduction = pref.getBoolean("noise_reduction", true);
 
         Log.d(LOGTAG, "Setting bitrate to " + bitrate);
+        Log.d(LOGTAG, "Setting res to " + width + " x " + height);
 
         boolean prepareVideo = rtspCamera2.prepareVideo(width, height, fps,
                 bitrate * 1024,
                 CameraHelper.getCameraOrientation(this));
 
+
         boolean prepareAudio = rtspCamera2.prepareAudio(
-                audio_bitrate * 1024,
-                samplerate,
-                stereo,
-                echo_cancel,
-                noise_reduction);
+                    audio_bitrate * 1024,
+                    samplerate,
+                    stereo,
+                    echo_cancel,
+                    noise_reduction);
+
+        if (!enable_audio) {
+            Log.d(LOGTAG, "disabling audio");
+            rtspCamera2.disableAudio();
+        } else {
+            rtspCamera2.enableAudio();
+            Log.d(LOGTAG, "enabling audio");
+        }
 
         Log.d(LOGTAG, "PrepareVideo: " + prepareVideo + " Audio " + prepareAudio);
         return prepareVideo && prepareAudio;
@@ -313,7 +359,7 @@ public class MainActivity extends AppCompatActivity
         Toast.makeText(MainActivity.this, "Connection failed. " + reason, Toast.LENGTH_SHORT)
                 .show();
         rtspCamera2.stopStream();
-        bStartStop.setText(getResources().getString(R.string.start_button));
+        bStartStop.setImageResource(R.drawable.ic_record);
     }
 
     @Override
@@ -323,12 +369,13 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onDisconnect() {
+        bStartStop.setImageResource(R.drawable.ic_record);
         Toast.makeText(MainActivity.this, "Disconnected", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onAuthError() {
-        bStartStop.setText(getResources().getString(R.string.start_button));
+        bStartStop.setImageResource(R.drawable.ic_record);
         rtspCamera2.stopStream();
         Toast.makeText(MainActivity.this, "Auth error", Toast.LENGTH_SHORT).show();
     }
@@ -341,19 +388,12 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onTouch(View view, MotionEvent motionEvent) {
         int action = motionEvent.getAction();
-
-        if (view == settingsButton && action == MotionEvent.ACTION_UP) {
-            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
-            startActivity(intent);
-        }
-        else {
-            if (motionEvent.getPointerCount() > 1) {
-                if (action == MotionEvent.ACTION_MOVE) {
-                    rtspCamera2.setZoom(motionEvent);
-                }
-            } else if (action == MotionEvent.ACTION_DOWN) {
-                rtspCamera2.tapToFocus(motionEvent);
+        if (motionEvent.getPointerCount() > 1) {
+            if (action == MotionEvent.ACTION_MOVE) {
+                rtspCamera2.setZoom(motionEvent);
             }
+        } else if (action == MotionEvent.ACTION_DOWN) {
+            rtspCamera2.tapToFocus(motionEvent);
         }
         return true;
     }
@@ -365,6 +405,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void surfaceChanged(@NonNull SurfaceHolder surfaceHolder, int format, int width, int height) {
+        Log.d(LOGTAG, "Setting preview to " + width + " x " + height + " " + format);
         rtspCamera2.startPreview();
     }
 
@@ -373,7 +414,6 @@ public class MainActivity extends AppCompatActivity
         if (rtspCamera2.isRecording()) {
             rtspCamera2.stopRecord();
             PathUtils.updateGallery(this, folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
-            bRecord.setText(R.string.start_record);
             Toast.makeText(this,
                     "file " + currentDateAndTime + ".mp4 saved in " + folder.getAbsolutePath(),
                     Toast.LENGTH_SHORT).show();
@@ -381,13 +421,15 @@ public class MainActivity extends AppCompatActivity
         }
         if (rtspCamera2.isStreaming()) {
             rtspCamera2.stopStream();
-            bStartStop.setText(getResources().getString(R.string.start_button));
+            bStartStop.setImageResource(R.drawable.ic_record);
         }
         unlockScreenOrientation();
         rtspCamera2.stopPreview();
     }
 
     private void getSettings() {
+        stream = pref.getBoolean("stream_video", true);
+        enable_audio = pref.getBoolean("enable_audio", true);
         protocol = pref.getString("protocol", "rtsp");
         address = pref.getString("address", "192.168.1.10");
         port = Integer.parseInt(pref.getString("port", "8554"));
@@ -399,9 +441,24 @@ public class MainActivity extends AppCompatActivity
         echo_cancel = pref.getBoolean("echo_cancel", true);
         noise_reduction = pref.getBoolean("noise_reduction", true);
         fps = Integer.parseInt(pref.getString("fps", "30"));
-        resolution = rtspCamera2.getResolutionsBack().get(Integer.parseInt(pref.getString("resolution", "0")));
-        int res = Integer.parseInt(pref.getString("resolution", "0"));
-        Log.d(LOGTAG, "Setting resolution to " + rtspCamera2.getResolutionsBack().get(res));
+        record = pref.getBoolean("record", false);
+        getResolution();
+        prepareEncoders();
+    }
+
+    private void getResolution() {
+        ArrayList<Size> resolutions = new ArrayList<>();
+        List<Size> frontResolutions = rtspCamera2.getResolutionsFront();
+
+        // Only get resolutions supported by both cameras
+        for (Size res : rtspCamera2.getResolutionsBack()) {
+            if (frontResolutions.contains(res)) {
+                resolutions.add(res);
+            }
+        }
+
+        resolution = resolutions.get(Integer.parseInt(pref.getString("resolution", "0")));
+        Log.d(LOGTAG, "getResultion " + resolution.getWidth() + " x " + resolution.getHeight());
     }
 
     @Override
