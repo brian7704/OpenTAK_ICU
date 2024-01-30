@@ -77,7 +77,8 @@
         <ListPreference
             android:key="codec"
             android:title="@string/codec"
-            android:entries="@array/codecs" />
+            android:entries="@array/codecs"
+            android:entryValues="@array/codecs" />
         <SwitchPreference
             android:defaultValue="false"
             android:key="record"
@@ -103,6 +104,11 @@
             android:singleLine="true"
             android:title="@string/samplerate"
             android:dependency="enable_audio" />
+        <ListPreference
+            android:key="audio_codec"
+            android:title="@string/codec"
+            android:entries="@array/audio_codecs"
+            android:entryValues="@array/audio_codecs" />
         <SwitchPreference
             android:defaultValue="true"
             android:key="stereo"

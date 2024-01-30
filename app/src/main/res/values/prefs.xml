@@ -29,4 +29,9 @@
         <item>H265</item>
         <item>AV1</item>
     </string-array>
+
+    <string-array name="audio_codecs">
+        <item>G711</item>
+        <item>AAC</item>
+    </string-array>
 </resources>

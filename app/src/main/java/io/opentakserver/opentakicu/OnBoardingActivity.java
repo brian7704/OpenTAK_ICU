@@ -51,6 +51,7 @@ public class OnBoardingActivity extends AppIntro {
     private static final String LOGTAG = "OnBoardingActivity";
     private static final String WELCOME_SLIDE = "welcome_slide";
     private static final String PERMISSIONS_SLIDE = "permissions_slide";
+    private static final String STORAGE_SLIDE = "storage_slide";
     private static final String BACKGROUND_LOCATION_SLIDE = "background_location_slide";
     private static final String FINALIZE_SLIDE = "finalize_slide";
 
@@ -165,19 +166,22 @@ public class OnBoardingActivity extends AppIntro {
                 getText(R.string.permissions_slide_description),
                 R.mipmap.ic_launcher, true, PERMISSIONS_SLIDE));
 
+        int slide_number = 3;
+
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+            addSlide(CustomLayout.createInstance(getString(R.string.storage_slide_title), getString(R.string.storage_slide_description), R.mipmap.ic_launcher, true, STORAGE_SLIDE));
+            String[] storage_permission = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
+            askForPermissions(storage_permission, slide_number, true);
+            slide_number++;
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             addSlide(CustomLayout.createInstance(getString(R.string.background_location_permission),
                     getText(R.string.background_location_permissions_slide_description),
                     R.mipmap.ic_launcher, true, BACKGROUND_LOCATION_SLIDE));
 
             String[] background_location_permission = new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION};
-            askForPermissions(background_location_permission, 3, true);
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            /*addSlide(CustomLayout.createInstance(getString(R.string.storage_permission),
-                    getString(R.string.storage_permission_description),
-                    R.mipmap.ic_launcher, true, STORAGE_PERMISSION_SLIDE));*/
+            askForPermissions(background_location_permission, slide_number, true);
         }
 
         addSlide(CustomLayout.createInstance(getString(R.string.finished),

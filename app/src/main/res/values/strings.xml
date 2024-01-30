@@ -91,4 +91,7 @@
     <string name="stream">Stream video</string>
     <string name="stream_video">Stream video</string>
     <string name="enable_audio">Enable Audio</string>
+    <string name="audio_codec">Audio Codec</string>
+    <string name="storage_slide_title">Storage Permission</string>
+    <string name="storage_slide_description">Please grant storage permission to save recordings</string>
 </resources>
