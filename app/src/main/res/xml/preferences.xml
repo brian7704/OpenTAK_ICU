@@ -55,7 +55,7 @@
             android:defaultValue="1"
             android:entries="@array/bitrates"
             android:entryValues="@array/bitrates"
-            android:key="bitrates"
+            android:key="bitrate"
             android:title="Bitrate" />
         <ListPreference
             android:defaultValue="1"

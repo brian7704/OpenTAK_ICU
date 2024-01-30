@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="appColor">#e74c3c</color>
+    <color name="appColor">#FF000000</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="colorBackground">#210028</color>
-    <color name="textColor">#eaeaec</color>
-    <color name="colorAccent">#424559</color>
+    <color name="colorBackground">#FF000000</color>
+    <color name="textColor">#FF33FF00</color>
+    <color name="colorAccent">#FFE4ECD9</color>
 </resources>
