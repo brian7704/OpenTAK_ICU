@@ -1,13 +1,23 @@
 package io.opentakserver.opentakicu;
 
 import android.Manifest;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.icu.util.Calendar;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.util.Size;
 import android.view.MotionEvent;
@@ -37,19 +47,25 @@ import com.pedro.library.base.Camera2Base;
 import com.pedro.library.rtmp.RtmpCamera2;
 import com.pedro.library.rtsp.RtspCamera2;
 import com.pedro.library.srt.SrtCamera2;
+import com.pedro.library.util.BitrateAdapter;
 import com.pedro.library.view.OpenGlView;
+import com.pedro.library.view.TakePhotoCallback;
 import com.pedro.rtsp.rtsp.Protocol;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 
 public class MainActivity extends AppCompatActivity
         implements Button.OnClickListener, ConnectChecker, SurfaceHolder.Callback,
@@ -69,6 +85,7 @@ public class MainActivity extends AppCompatActivity
     private File folder;
     //options menu
     private TextView tvBitrate;
+    private FloatingActionButton pictureButton;
 
     private String protocol;
     private String address;
@@ -82,6 +99,7 @@ public class MainActivity extends AppCompatActivity
     private boolean noise_reduction;
     private int fps;
     private Size resolution;
+    private boolean adaptive_bitrate;
     private boolean record;
     private boolean stream;
     private boolean enable_audio;
@@ -89,6 +107,9 @@ public class MainActivity extends AppCompatActivity
     private int audio_bitrate;
     private String audio_codec;
     private String codec;
+
+    private BitrateAdapter bitrateAdapter;
+    private Context context;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,6 +119,8 @@ public class MainActivity extends AppCompatActivity
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
         folder = PathUtils.getRecordPath();
+        pictureButton = findViewById(R.id.pictureButton);
+        pictureButton.setOnClickListener(this);
 
         permissions();
         pref.registerOnSharedPreferenceChangeListener(this);
@@ -127,6 +150,7 @@ public class MainActivity extends AppCompatActivity
         flashlight.setOnClickListener(this);
 
         prepareEncoders();
+        context = this;
     }
 
     private void lockScreenOrientation() {
@@ -198,7 +222,10 @@ public class MainActivity extends AppCompatActivity
 
                     if (!protocol.equals("srt") && !username.isEmpty() && !password.isEmpty()) {
                          camera2Base.getStreamClient().setAuthorization(username, password);
-                         Log.d(LOGTAG, "set auth");
+                         Log.d(LOGTAG, "set auth " + username + " " + password);
+                    }
+                    else {
+                        Log.d(LOGTAG, "NO AUTH");
                     }
 
                     String url = protocol + "://" + address + ":" + port + "/" + path;
@@ -244,13 +271,64 @@ public class MainActivity extends AppCompatActivity
         } else if (id == R.id.flashlight) {
             if (camera2Base.isLanternEnabled())
                 camera2Base.disableLantern();
-            else {
+            else if (camera2Base.isLanternSupported()){
                 try {
                     camera2Base.enableLantern();
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             }
+        } else if (id == R.id.pictureButton) {
+            rtspCamera2.getGlInterface().takePhoto(new TakePhotoCallback() {
+                @Override
+                public void onTakePhoto(Bitmap bitmap) {
+                    HandlerThread handlerThread = new HandlerThread("HandlerThreadName");
+                    handlerThread.start();
+                    Looper looper = handlerThread.getLooper();
+                    Handler handler = new Handler(looper);
+
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                long start = System.currentTimeMillis();
+
+                                String filename = String.valueOf(System.currentTimeMillis());
+
+                                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+                                    MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, filename, "image:"+filename);
+                                } else {
+                                    boolean savedSuccessfully;
+                                    OutputStream fos;
+                                    ContentResolver resolver =  context.getContentResolver();
+                                    ContentValues contentValues = new ContentValues();
+                                    contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename);
+                                    contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "image/png");
+                                    contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, "DCIM/OpenTAKICU");
+                                    Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
+                                    fos = resolver.openOutputStream(imageUri);
+
+                                    savedSuccessfully = bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                                    fos.flush();
+                                    fos.close();
+
+                                    if (savedSuccessfully) {
+                                        MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Took photo: " + imageUri.getPath(), Toast.LENGTH_SHORT).show());
+                                        Log.d(LOGTAG, "TOOK PIC" + (System.currentTimeMillis() - start));
+                                        Log.d(LOGTAG, "TOOK PIC: " + imageUri.getPath());
+                                    } else {
+                                        Log.d(LOGTAG, "Failed to save photo");
+                                        MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Failed to save photo", Toast.LENGTH_SHORT).show());
+                                    }
+                                }
+                            } catch (NullPointerException | IOException e) {
+                                    Log.d(LOGTAG, "Failed to save photo: " + e.getMessage());
+                                    MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Failed to save photo: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                            }
+                        }
+                    });
+                }
+            });
         }
     }
 
@@ -318,10 +396,19 @@ public class MainActivity extends AppCompatActivity
         else if (Objects.equals(codec, "AV1"))
             camera2Base.setVideoCodec(VideoCodec.AV1);
 
-        if (protocol.startsWith("rtsp") && Objects.equals(audio_codec, "G711"))
-            camera2Base.setAudioCodec(AudioCodec.G711);
-        else
+
+        if (Objects.equals(audio_codec, "G711"))
+            try {
+                camera2Base.setAudioCodec(AudioCodec.G711);
+                Log.d(LOGTAG, "Set audio codec to G711");
+            } catch (RuntimeException e) {
+                camera2Base.setAudioCodec(AudioCodec.AAC);
+                Log.d(LOGTAG, "Failed to set audio codec to  G711, falling back to AAC");
+            }
+        else {
             camera2Base.setAudioCodec(AudioCodec.AAC);
+            Log.d(LOGTAG, "Set audio codec to AAC");
+        }
 
         Log.d(LOGTAG, "Setting bitrate to " + bitrate);
         Log.d(LOGTAG, "Setting res to " + width + " x " + height);
@@ -357,6 +444,19 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onConnectionSuccess() {
         Toast.makeText(MainActivity.this, "Connection success", Toast.LENGTH_SHORT).show();
+        if (adaptive_bitrate) {
+            tvBitrate.setText("ADAPTIVE ENABLED");
+            bitrateAdapter = new BitrateAdapter(new BitrateAdapter.Listener() {
+                @Override
+                public void onBitrateAdapted(int bitrate) {
+                    camera2Base.setVideoBitrateOnFly(bitrate);
+                    Log.d(LOGTAG, "Set bitrate to " + bitrate);
+                    tvBitrate.setText(bitrate + " bps");
+                }
+            });
+            bitrateAdapter.setMaxBitrate(camera2Base.getBitrate());
+        }
+        else tvBitrate.setText("ADAPTIVE SHIT NOT ENABLED");
     }
 
     @Override
@@ -370,7 +470,9 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onNewBitrate(final long bitrate) {
-        tvBitrate.setText(bitrate + " bps");
+        if (bitrateAdapter != null) {
+            bitrateAdapter.adaptBitrate(bitrate, camera2Base.getStreamClient().hasCongestion());
+        }
     }
 
     @Override
@@ -470,8 +572,9 @@ public class MainActivity extends AppCompatActivity
         noise_reduction = pref.getBoolean("noise_reduction", true);
         fps = Integer.parseInt(pref.getString("fps", "30"));
         record = pref.getBoolean("record", false);
-        codec = pref.getString("codec", "H265");
-        audio_codec = pref.getString("audio_codec", "G711");
+        codec = pref.getString("codec", "H264");
+        audio_codec = pref.getString("audio_codec", "AAC");
+        adaptive_bitrate = pref.getBoolean("adaptive_bitrate", true);
         getResolution();
         prepareEncoders();
     }

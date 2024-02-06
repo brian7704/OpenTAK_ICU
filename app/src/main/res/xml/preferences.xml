@@ -62,12 +62,17 @@
             android:entries="@array/bitrates"
             android:entryValues="@array/bitrates">
         </ListPreference>
-        <ListPreference
-            android:defaultValue="1"
-            android:entries="@array/bitrates"
-            android:entryValues="@array/bitrates"
+        <EditTextPreference
+            android:defaultValue="1000"
+            android:inputType="number"
             android:key="bitrate"
             android:title="Bitrate" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="adaptive_bitrate"
+            android:title="Adaptive Bitrate"
+            app:summary="Changes the bitrate dynamically based on your bandwidth"
+            android:dependency="stream_video" />
         <ListPreference
             android:defaultValue="1"
             android:entries="@array/fps"
