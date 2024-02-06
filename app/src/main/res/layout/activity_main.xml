@@ -55,7 +55,7 @@
             app:layout_constraintBottom_toTopOf="@id/switch_camera"
             app:layout_constraintEnd_toEndOf="@+id/openGlView"
             app:useCompatPadding="true"
-            app:srcCompat="@drawable/flashlight_on" />
+            app:srcCompat="@drawable/flashlight_off" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/switch_camera"

@@ -92,6 +92,7 @@ public class MainActivity extends AppCompatActivity
     //options menu
     private TextView tvBitrate;
     private FloatingActionButton pictureButton;
+    private FloatingActionButton flashlight;
     private View whiteOverlay;
 
     private String protocol;
@@ -156,7 +157,7 @@ public class MainActivity extends AppCompatActivity
         switchCamera.setOnClickListener(this);
         whiteOverlay = findViewById(R.id.white_color_overlay);
 
-        FloatingActionButton flashlight = findViewById(R.id.flashlight);
+        flashlight = findViewById(R.id.flashlight);
         flashlight.setOnClickListener(this);
 
         prepareEncoders();
@@ -279,11 +280,14 @@ public class MainActivity extends AppCompatActivity
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
         } else if (id == R.id.flashlight) {
-            if (camera2Base.isLanternEnabled())
+            if (camera2Base.isLanternEnabled()) {
                 camera2Base.disableLantern();
+                flashlight.setImageResource(R.drawable.flashlight_off);
+            }
             else if (camera2Base.isLanternSupported()){
                 try {
                     camera2Base.enableLantern();
+                    flashlight.setImageResource(R.drawable.flashlight_on);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -304,11 +308,12 @@ public class MainActivity extends AppCompatActivity
                             try {
                                 long start = System.currentTimeMillis();
 
-                                String filename = "OpenTAKICU/" + System.currentTimeMillis() + ".png";
+                                String filename = "OpenTAKICU_" + System.currentTimeMillis();
 
                                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
                                     MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, filename, "image:"+filename);
                                     MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.INVISIBLE));
+                                    MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Saved photo", Toast.LENGTH_SHORT).show());
                                 } else {
                                     boolean savedSuccessfully;
                                     OutputStream fos;
@@ -326,7 +331,7 @@ public class MainActivity extends AppCompatActivity
                                     fos.close();
 
                                     if (savedSuccessfully) {
-                                        MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Took photo: " + imageUri.getPath(), Toast.LENGTH_SHORT).show());
+                                        MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Saved photo", Toast.LENGTH_SHORT).show());
                                     } else {
                                         Log.d(LOGTAG, "Failed to save photo");
                                         MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Failed to save photo", Toast.LENGTH_SHORT).show());
