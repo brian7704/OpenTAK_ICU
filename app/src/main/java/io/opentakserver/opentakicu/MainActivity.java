@@ -9,6 +9,9 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CaptureRequest;
 import android.icu.util.Calendar;
 import android.net.Uri;
 import android.os.Build;
@@ -23,6 +26,7 @@ import android.util.Size;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
@@ -30,6 +34,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -37,6 +42,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.pedro.common.AudioCodec;
 import com.pedro.common.ConnectChecker;
 import com.pedro.common.VideoCodec;
+import com.pedro.encoder.input.video.Camera2ApiManager;
 import com.pedro.encoder.input.video.CameraHelper;
 import com.pedro.encoder.input.video.CameraOpenException;
 
@@ -86,6 +92,7 @@ public class MainActivity extends AppCompatActivity
     //options menu
     private TextView tvBitrate;
     private FloatingActionButton pictureButton;
+    private View whiteOverlay;
 
     private String protocol;
     private String address;
@@ -110,6 +117,8 @@ public class MainActivity extends AppCompatActivity
 
     private BitrateAdapter bitrateAdapter;
     private Context context;
+
+    private float mPreviousBrightness = -1.0f;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -145,6 +154,7 @@ public class MainActivity extends AppCompatActivity
         bStartStop.setOnClickListener(this);
         FloatingActionButton switchCamera = findViewById(R.id.switch_camera);
         switchCamera.setOnClickListener(this);
+        whiteOverlay = findViewById(R.id.white_color_overlay);
 
         FloatingActionButton flashlight = findViewById(R.id.flashlight);
         flashlight.setOnClickListener(this);
@@ -282,6 +292,7 @@ public class MainActivity extends AppCompatActivity
             rtspCamera2.getGlInterface().takePhoto(new TakePhotoCallback() {
                 @Override
                 public void onTakePhoto(Bitmap bitmap) {
+                    MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.VISIBLE));
                     HandlerThread handlerThread = new HandlerThread("HandlerThreadName");
                     handlerThread.start();
                     Looper looper = handlerThread.getLooper();
@@ -293,10 +304,11 @@ public class MainActivity extends AppCompatActivity
                             try {
                                 long start = System.currentTimeMillis();
 
-                                String filename = String.valueOf(System.currentTimeMillis());
+                                String filename = "OpenTAKICU/" + System.currentTimeMillis() + ".png";
 
                                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
                                     MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, filename, "image:"+filename);
+                                    MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.INVISIBLE));
                                 } else {
                                     boolean savedSuccessfully;
                                     OutputStream fos;
@@ -308,14 +320,13 @@ public class MainActivity extends AppCompatActivity
                                     Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
                                     fos = resolver.openOutputStream(imageUri);
 
+                                    MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.INVISIBLE));
                                     savedSuccessfully = bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
                                     fos.flush();
                                     fos.close();
 
                                     if (savedSuccessfully) {
                                         MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Took photo: " + imageUri.getPath(), Toast.LENGTH_SHORT).show());
-                                        Log.d(LOGTAG, "TOOK PIC" + (System.currentTimeMillis() - start));
-                                        Log.d(LOGTAG, "TOOK PIC: " + imageUri.getPath());
                                     } else {
                                         Log.d(LOGTAG, "Failed to save photo");
                                         MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Failed to save photo", Toast.LENGTH_SHORT).show());

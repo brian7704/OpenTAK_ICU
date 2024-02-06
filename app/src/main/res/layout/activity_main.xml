@@ -8,6 +8,14 @@
     android:id="@+id/activity_custom"
     >
 
+    <View
+        android:id="@+id/white_color_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF"
+        android:visibility="invisible"
+        android:elevation="8dp" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
