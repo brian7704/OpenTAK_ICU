@@ -53,6 +53,30 @@
             android:title="Use TCP"
             app:summary="Required if the server is behind a firewall or NAT."
             android:dependency="stream_video" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="self_signed_cert"
+            android:title="Server uses Self-Signed Certificate"
+            app:summary=""
+            android:dependency="stream_video" />
+        <Preference
+            android:key="certificate"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Certificate"
+            app:summary="@string/certificate_description"
+            android:dependency="self_signed_cert" />
+        <EditTextPreference
+            android:key="certificate_password"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Certificate Password"
+            android:dependency="self_signed_cert" />
+        <Preference
+            android:key="test_certificate"
+            android:title="Test Certificate"
+            app:summary="@string/test_certificate_description"
+            android:dependency="self_signed_cert" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="Video Settings">

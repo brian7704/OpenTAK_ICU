@@ -9,14 +9,9 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.CaptureRequest;
-import android.icu.util.Calendar;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -26,7 +21,6 @@ import android.util.Size;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
@@ -34,7 +28,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -42,7 +35,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.pedro.common.AudioCodec;
 import com.pedro.common.ConnectChecker;
 import com.pedro.common.VideoCodec;
-import com.pedro.encoder.input.video.Camera2ApiManager;
 import com.pedro.encoder.input.video.CameraHelper;
 import com.pedro.encoder.input.video.CameraOpenException;
 
@@ -61,17 +53,21 @@ import com.pedro.rtsp.rtsp.Protocol;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.security.KeyStore;
+import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.Executor;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 
 public class MainActivity extends AppCompatActivity
         implements Button.OnClickListener, ConnectChecker, SurfaceHolder.Callback,
@@ -89,7 +85,7 @@ public class MainActivity extends AppCompatActivity
     private FloatingActionButton bStartStop;
     private String currentDateAndTime = "";
     private File folder;
-    //options menu
+
     private TextView tvBitrate;
     private FloatingActionButton pictureButton;
     private FloatingActionButton flashlight;
@@ -101,6 +97,7 @@ public class MainActivity extends AppCompatActivity
     private String path;
     private String username;
     private String password;
+    private String certFile;
     private int samplerate;
     private boolean stereo;
     private boolean echo_cancel;
@@ -118,8 +115,6 @@ public class MainActivity extends AppCompatActivity
 
     private BitrateAdapter bitrateAdapter;
     private Context context;
-
-    private float mPreviousBrightness = -1.0f;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -162,6 +157,32 @@ public class MainActivity extends AppCompatActivity
 
         prepareEncoders();
         context = this;
+    }
+
+    private void addCert() {
+        if (certFile != null) {
+            try {
+                Log.d(LOGTAG, "Using cert: " + getFilesDir().getAbsolutePath());
+                KeyStore keyStore = KeyStore.getInstance("PKCS12");
+                FileInputStream caFile = new FileInputStream(certFile);
+                keyStore.load(caFile, "atakatak".toCharArray());
+
+                TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                trustManagerFactory.init(keyStore);
+
+                SSLContext sslctx = SSLContext.getInstance("TLS");
+                sslctx.init(null, trustManagerFactory.getTrustManagers(), new SecureRandom());
+
+                rtspCamera2.getStreamClient().addCertificates(trustManagerFactory.getTrustManagers());
+
+            } catch (Exception e) {
+                Log.e(LOGTAG, e.getMessage());
+                Toast.makeText(this, "Failed to open cert: " + e.getMessage(),
+                        Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Log.d(LOGTAG, "Cert null");
+        }
     }
 
     private void lockScreenOrientation() {
@@ -233,13 +254,12 @@ public class MainActivity extends AppCompatActivity
 
                     if (!protocol.equals("srt") && !username.isEmpty() && !password.isEmpty()) {
                          camera2Base.getStreamClient().setAuthorization(username, password);
-                         Log.d(LOGTAG, "set auth " + username + " " + password);
                     }
                     else {
                         Log.d(LOGTAG, "NO AUTH");
                     }
 
-                    String url = protocol + "://" + address + ":" + port + "/" + path;
+                    String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port)).concat("/").concat(path);
                     Log.d(LOGTAG, url);
 
                     if (!camera2Base.isAutoFocusEnabled())
@@ -247,7 +267,7 @@ public class MainActivity extends AppCompatActivity
 
                     if (stream) {
                         camera2Base.startStream(url);
-                        Log.d(LOGTAG, "Started stream to " + url);
+                        Log.d(LOGTAG, "Started stream to ".concat(url));
                     }
 
                     lockScreenOrientation();
@@ -308,10 +328,10 @@ public class MainActivity extends AppCompatActivity
                             try {
                                 long start = System.currentTimeMillis();
 
-                                String filename = "OpenTAKICU_" + System.currentTimeMillis();
+                                String filename = "OpenTAKICU_".concat(String.valueOf(System.currentTimeMillis()));
 
                                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-                                    MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, filename, "image:"+filename);
+                                    MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, filename, "image:".concat(filename));
                                     MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.INVISIBLE));
                                     MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Saved photo", Toast.LENGTH_SHORT).show());
                                 } else {
@@ -338,8 +358,8 @@ public class MainActivity extends AppCompatActivity
                                     }
                                 }
                             } catch (NullPointerException | IOException e) {
-                                    Log.d(LOGTAG, "Failed to save photo: " + e.getMessage());
-                                    MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Failed to save photo: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                                    Log.d(LOGTAG, "Failed to save photo: ".concat(e.getMessage()));
+                                    MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Failed to save photo: ".concat(e.getMessage()), Toast.LENGTH_SHORT).show());
                             }
                         }
                     });
@@ -352,7 +372,7 @@ public class MainActivity extends AppCompatActivity
         if (record) {
             try {
                 if (!folder.exists()) {
-                    Log.d(LOGTAG, "Trying to make folder " + folder.mkdir());
+                    folder.mkdir();
                 }
 
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
@@ -360,7 +380,7 @@ public class MainActivity extends AppCompatActivity
                 if (!camera2Base.isStreaming()) {
                     if (prepareEncoders()) {
                         camera2Base.startRecord(
-                                folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
+                                folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
                         lockScreenOrientation();
                         Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
                     } else {
@@ -369,14 +389,14 @@ public class MainActivity extends AppCompatActivity
                     }
                 } else {
                     camera2Base.startRecord(
-                            folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
+                            folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
                     lockScreenOrientation();
                     Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
                 }
             } catch (IOException e) {
                 camera2Base.stopRecord();
                 unlockScreenOrientation();
-                PathUtils.updateGallery(this, folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
+                PathUtils.updateGallery(this, folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
                 Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         }
@@ -386,9 +406,9 @@ public class MainActivity extends AppCompatActivity
         if (camera2Base.isRecording()) {
             camera2Base.stopRecord();
             unlockScreenOrientation();
-            PathUtils.updateGallery(this, folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
+            PathUtils.updateGallery(this, folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
             Toast.makeText(this,
-                    "file " + currentDateAndTime + ".mp4 saved in " + folder.getAbsolutePath(),
+                    "file ".concat(currentDateAndTime).concat(".mp4 saved in ").concat(folder.getAbsolutePath()),
                     Toast.LENGTH_SHORT).show();
         }
     }
@@ -426,8 +446,10 @@ public class MainActivity extends AppCompatActivity
             Log.d(LOGTAG, "Set audio codec to AAC");
         }
 
-        Log.d(LOGTAG, "Setting bitrate to " + bitrate);
-        Log.d(LOGTAG, "Setting res to " + width + " x " + height);
+        Log.d(LOGTAG, "Setting bitrate to ".concat(String.valueOf(bitrate)));
+        Log.d(LOGTAG, "Setting res to ".concat(String.valueOf(width)).concat(" x ").concat(String.valueOf(height)));
+
+        addCert();
 
         boolean prepareVideo = camera2Base.prepareVideo(width, height, fps,
                 bitrate * 1024,
@@ -449,7 +471,7 @@ public class MainActivity extends AppCompatActivity
             Log.d(LOGTAG, "enabling audio");
         }
 
-        Log.d(LOGTAG, "PrepareVideo: " + prepareVideo + " Audio " + prepareAudio);
+        Log.d(LOGTAG, "PrepareVideo: ".concat(String.valueOf(prepareVideo)).concat(" Audio ").concat(String.valueOf(prepareAudio)));
         return prepareVideo && prepareAudio;
     }
 
@@ -466,8 +488,8 @@ public class MainActivity extends AppCompatActivity
                 @Override
                 public void onBitrateAdapted(int bitrate) {
                     camera2Base.setVideoBitrateOnFly(bitrate);
-                    Log.d(LOGTAG, "Set bitrate to " + bitrate);
-                    tvBitrate.setText(bitrate + " bps");
+                    Log.d(LOGTAG, "Set bitrate to ".concat(String.valueOf(bitrate)));
+                    tvBitrate.setText(String.valueOf(bitrate).concat(" bps"));
                 }
             });
             bitrateAdapter.setMaxBitrate(camera2Base.getBitrate());
@@ -477,11 +499,12 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onConnectionFailed(@NonNull final String reason) {
-        Toast.makeText(MainActivity.this, "Connection failed. " + reason, Toast.LENGTH_SHORT)
+        Toast.makeText(MainActivity.this, "Connection failed. ".concat(reason), Toast.LENGTH_SHORT)
                 .show();
         camera2Base.stopStream();
         stopRecording();
         bStartStop.setImageResource(R.drawable.ic_record);
+        Log.d(LOGTAG, "Connection failed: ".concat(reason));
     }
 
     @Override
@@ -530,7 +553,6 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void surfaceChanged(@NonNull SurfaceHolder surfaceHolder, int format, int width, int height) {
-        Log.d(LOGTAG, "Setting preview to " + width + " x " + height + " " + format);
         camera2Base.startPreview();
     }
 
@@ -538,9 +560,9 @@ public class MainActivity extends AppCompatActivity
     public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
         if (camera2Base.isRecording()) {
             camera2Base.stopRecord();
-            PathUtils.updateGallery(this, folder.getAbsolutePath() + "/" + currentDateAndTime + ".mp4");
+            PathUtils.updateGallery(this, folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
             Toast.makeText(this,
-                    "file " + currentDateAndTime + ".mp4 saved in " + folder.getAbsolutePath(),
+                    "file ".concat(currentDateAndTime).concat(".mp4 saved in ").concat(folder.getAbsolutePath()),
                     Toast.LENGTH_SHORT).show();
             currentDateAndTime = "";
         }
@@ -582,6 +604,8 @@ public class MainActivity extends AppCompatActivity
         path = pref.getString("path", "stream");
         username = pref.getString("username", "administrator");
         password = pref.getString("password", "password");
+        certFile = pref.getString("certificate", null);
+        Log.d(LOGTAG, "Got cert: " + certFile);
         samplerate = Integer.parseInt(pref.getString("samplerate", "44100"));
         stereo = pref.getBoolean("stereo", true);
         echo_cancel = pref.getBoolean("echo_cancel", true);
@@ -607,12 +631,11 @@ public class MainActivity extends AppCompatActivity
         }
 
         resolution = resolutions.get(Integer.parseInt(pref.getString("resolution", "0")));
-        Log.d(LOGTAG, "getResultion " + resolution.getWidth() + " x " + resolution.getHeight());
+        Log.d(LOGTAG, "getResultion ".concat(String.valueOf(resolution.getWidth())).concat(" x ").concat(String.valueOf(resolution.getHeight())));
     }
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
-        Log.d(LOGTAG, "onSharedPreferenceChange " + s);
         getSettings();
     }
 }

@@ -114,7 +114,6 @@ public class OnBoardingActivity extends AppIntro {
 
             Bundle args = getArguments();
             CharSequence id = args.getCharSequence("slide_id");
-            Log.d(LOGTAG, "onViewCreated " + id);
         }
 
         @Override

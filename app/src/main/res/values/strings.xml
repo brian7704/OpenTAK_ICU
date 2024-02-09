@@ -94,4 +94,13 @@
     <string name="audio_codec">Audio Codec</string>
     <string name="storage_slide_title">Storage Permission</string>
     <string name="storage_slide_description">Please grant storage permission to save recordings</string>
+    <string name="certificate_description">The server\'s trust store certificate in PKCS12 format. Required if your server\'s certificate is self-signed</string>
+    <string name="test_certificate_description">Tests the certificate and certificate password. You must press this before streaming to a server with a self signed certificate.</string>
+    <string name="failed_to_open_cert">Failed to open certificate</string>
+    <string name="success">Success</string>
+    <string name="choose_cert">Please choose a certificate and provide a password</string>
+    <string name="cert_success">The certificate is ready to be used</string>
+    <string name="ok">Ok</string>
+    <string name="cancel">Cancel</string>
+    <string name="error">Error</string>
 </resources>
