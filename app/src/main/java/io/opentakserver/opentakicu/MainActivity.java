@@ -1,120 +1,86 @@
 package io.opentakserver.opentakicu;
 
 import android.Manifest;
-import android.content.ContentResolver;
-import android.content.ContentValues;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Looper;
-import android.provider.MediaStore;
+import android.os.IBinder;
 import android.util.Log;
-import android.util.Size;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.pedro.common.AudioCodec;
-import com.pedro.common.ConnectChecker;
-import com.pedro.common.VideoCodec;
 import com.pedro.encoder.input.video.CameraHelper;
-import com.pedro.encoder.input.video.CameraOpenException;
 
 import androidx.preference.PreferenceManager;
-import io.opentakserver.opentakicu.utils.PathUtils;
 
-import com.pedro.library.base.Camera2Base;
-import com.pedro.library.rtmp.RtmpCamera2;
-import com.pedro.library.rtsp.RtspCamera2;
-import com.pedro.library.srt.SrtCamera2;
-import com.pedro.library.util.BitrateAdapter;
 import com.pedro.library.view.OpenGlView;
-import com.pedro.library.view.TakePhotoCallback;
-import com.pedro.rtsp.rtsp.Protocol;
 
-import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.security.KeyStore;
-import java.security.SecureRandom;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
 
 public class MainActivity extends AppCompatActivity
-        implements Button.OnClickListener, ConnectChecker, SurfaceHolder.Callback,
-        View.OnTouchListener, SharedPreferences.OnSharedPreferenceChangeListener {
+        implements Button.OnClickListener, SurfaceHolder.Callback, View.OnTouchListener {
 
     private final String LOGTAG = "MainActivity";
     private final ArrayList<String> PERMISSIONS = new ArrayList<>();
     SharedPreferences pref;
 
-    private Camera2Base camera2Base;
-    private RtspCamera2 rtspCamera2;
-    private RtmpCamera2 rtmpCamera2;
-    private SrtCamera2 srtCamera2;
     private OpenGlView openGlView;
     private FloatingActionButton bStartStop;
-    private String currentDateAndTime = "";
-    private File folder;
 
     private TextView tvBitrate;
     private FloatingActionButton pictureButton;
     private FloatingActionButton flashlight;
     private View whiteOverlay;
 
-    private String protocol;
-    private String address;
-    private int port;
-    private String path;
-    private String username;
-    private String password;
-    private String certFile;
-    private int samplerate;
-    private boolean stereo;
-    private boolean echo_cancel;
-    private boolean noise_reduction;
-    private int fps;
-    private Size resolution;
-    private boolean adaptive_bitrate;
-    private boolean record;
-    private boolean stream;
-    private boolean enable_audio;
-    private int bitrate;
-    private int audio_bitrate;
-    private String audio_codec;
-    private String codec;
+    private boolean service_bound = false;
+    private CameraService camera_service;
 
-    private BitrateAdapter bitrateAdapter;
-    private Context context;
+    final BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            Log.d(LOGTAG, "Got broadcast: " + intent);
+            if (action != null && action.equals(CameraService.EXIT_APP)) {
+                Log.d(LOGTAG, "Exiting app");
+                finishAndRemoveTask();
+            } else if (action != null && action.equals(CameraService.START_STREAM)) {
+                if (!service_bound) {
+                    bindService(new Intent(getApplicationContext(), CameraService.class), mConnection, Context.BIND_IMPORTANT);
+                    bStartStop.setImageResource(R.drawable.stop);
+                    lockScreenOrientation();
+                }
+            } else if (action != null && (action.equals(CameraService.STOP_STREAM) || action.equals(CameraService.AUTH_ERROR))) {
+                bStartStop.setImageResource(R.drawable.ic_record);
+                if (camera_service != null)
+                    camera_service.stopStream();
+                unbindService(mConnection);
+                service_bound = false;
+                unlockScreenOrientation();
+            } else if (action != null && action.equals(CameraService.TOOK_PICTURE)) {
+                MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.INVISIBLE));
+            } else if (action != null && action.equals(CameraService.NEW_BITRATE)) {
+                long bitrate = intent.getLongExtra(CameraService.NEW_BITRATE, 0) / 1000;
+                tvBitrate.setText(bitrate + "kb/s");
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,12 +89,10 @@ public class MainActivity extends AppCompatActivity
         pref = PreferenceManager.getDefaultSharedPreferences(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
-        folder = PathUtils.getRecordPath();
         pictureButton = findViewById(R.id.pictureButton);
         pictureButton.setOnClickListener(this);
 
         permissions();
-        pref.registerOnSharedPreferenceChangeListener(this);
 
         openGlView = findViewById(R.id.openGlView);
         openGlView.getHolder().addCallback(this);
@@ -143,8 +107,6 @@ public class MainActivity extends AppCompatActivity
             finish();
         }
 
-        getSettings();
-
         tvBitrate = findViewById(R.id.tv_bitrate);
         bStartStop = findViewById(R.id.b_start_stop);
         bStartStop.setOnClickListener(this);
@@ -155,35 +117,65 @@ public class MainActivity extends AppCompatActivity
         flashlight = findViewById(R.id.flashlight);
         flashlight.setOnClickListener(this);
 
-        prepareEncoders();
-        context = this;
-    }
-
-    private void addCert() {
-        if (certFile != null) {
-            try {
-                Log.d(LOGTAG, "Using cert: " + getFilesDir().getAbsolutePath());
-                KeyStore keyStore = KeyStore.getInstance("PKCS12");
-                FileInputStream caFile = new FileInputStream(certFile);
-                keyStore.load(caFile, "atakatak".toCharArray());
-
-                TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-                trustManagerFactory.init(keyStore);
-
-                SSLContext sslctx = SSLContext.getInstance("TLS");
-                sslctx.init(null, trustManagerFactory.getTrustManagers(), new SecureRandom());
-
-                rtspCamera2.getStreamClient().addCertificates(trustManagerFactory.getTrustManagers());
-
-            } catch (Exception e) {
-                Log.e(LOGTAG, e.getMessage());
-                Toast.makeText(this, "Failed to open cert: " + e.getMessage(),
-                        Toast.LENGTH_SHORT).show();
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(new Intent(getApplicationContext(), CameraService.class));
         } else {
-            Log.d(LOGTAG, "Cert null");
+            startService(new Intent(this, CameraService.class));
+        }
+        CameraService.observer.observe(this, cameraService -> {
+            Log.d(LOGTAG, "observer");
+            camera_service = cameraService;
+            if (openGlView.getHolder().getSurface().isValid() && camera_service != null) {
+                camera_service.setView(openGlView);
+                camera_service.startPreview();
+                Log.d(LOGTAG, "Observer started preview");
+            }
+        });
+
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(CameraService.EXIT_APP);
+        intentFilter.addAction(CameraService.START_STREAM);
+        intentFilter.addAction(CameraService.STOP_STREAM);
+        intentFilter.addAction(CameraService.AUTH_ERROR);
+        intentFilter.addAction(CameraService.TOOK_PICTURE);
+        intentFilter.addAction(CameraService.NEW_BITRATE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(receiver, intentFilter);
         }
     }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d(LOGTAG, "onDestroy");
+        if (camera_service != null)
+            camera_service.stopPreview();
+        stopService(new Intent(this, CameraService.class));
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        Log.d(LOGTAG, "onPause");
+        if (camera_service != null)
+            camera_service.stopPreview();
+    }
+
+    private final ServiceConnection mConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            Log.d(LOGTAG, "onServiceConnected");
+            service_bound = true;
+            bStartStop.setImageResource(R.drawable.stop);
+            camera_service.startStream();
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            service_bound = false;
+        }
+    };
 
     private void lockScreenOrientation() {
         int orientation;
@@ -241,401 +233,71 @@ public class MainActivity extends AppCompatActivity
     public void onClick(View v) {
         int id = v.getId();
         if (id == R.id.b_start_stop) {
-            if (!camera2Base.isStreaming() && !camera2Base.isRecording()) {
+            if (!service_bound) {
+                bindService(new Intent(this, CameraService.class), mConnection, Context.BIND_IMPORTANT);
                 bStartStop.setImageResource(R.drawable.stop);
-
-                if (Objects.equals(protocol, "rtsp") && pref.getBoolean("tcp", true)) {
-                    rtspCamera2.getStreamClient().setProtocol(Protocol.TCP);
-                } else if (Objects.equals(protocol, "rtsp")){
-                    rtspCamera2.getStreamClient().setProtocol(Protocol.UDP);
-                }
-
-                if (camera2Base.isRecording() || prepareEncoders()) {
-
-                    if (!protocol.equals("srt") && !username.isEmpty() && !password.isEmpty()) {
-                         camera2Base.getStreamClient().setAuthorization(username, password);
-                    }
-                    else {
-                        Log.d(LOGTAG, "NO AUTH");
-                    }
-
-                    String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port)).concat("/").concat(path);
-                    Log.d(LOGTAG, url);
-
-                    if (!camera2Base.isAutoFocusEnabled())
-                        camera2Base.enableAutoFocus();
-
-                    if (stream) {
-                        camera2Base.startStream(url);
-                        Log.d(LOGTAG, "Started stream to ".concat(url));
-                    }
-
-                    lockScreenOrientation();
-                    startRecording();
-                } else {
-                    //If you see this all time when you start stream,
-                    //it is because your encoder device doesn't support the configuration
-                    //in video encoder maybe color format.
-                    //If you have more encoder go to VideoEncoder or AudioEncoder class,
-                    //change encoder and try
-                    Toast.makeText(this, "Error preparing stream, This device cant do it",
-                            Toast.LENGTH_SHORT).show();
-                    bStartStop.setImageResource(R.drawable.ic_record);
-                }
+                lockScreenOrientation();
             } else {
                 bStartStop.setImageResource(R.drawable.ic_record);
-                if (camera2Base.isStreaming())
-                    camera2Base.stopStream();
-                stopRecording();
+                camera_service.stopStream();
+                unbindService(mConnection);
+                service_bound = false;
                 unlockScreenOrientation();
             }
         } else if (id == R.id.switch_camera) {
-            try {
-                camera2Base.switchCamera();
-            } catch (CameraOpenException e) {
-                Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-            //options menu
+            camera_service.switchCamera();
         } else if (id == R.id.settingsButton) {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
         } else if (id == R.id.flashlight) {
-            if (camera2Base.isLanternEnabled()) {
-                camera2Base.disableLantern();
+            if (camera_service.getCamera().isLanternEnabled()) {
                 flashlight.setImageResource(R.drawable.flashlight_off);
+            } else {
+                flashlight.setImageResource(R.drawable.flashlight_on);
             }
-            else if (camera2Base.isLanternSupported()){
-                try {
-                    camera2Base.enableLantern();
-                    flashlight.setImageResource(R.drawable.flashlight_on);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }
+
+            camera_service.toggleLantern();
         } else if (id == R.id.pictureButton) {
-            rtspCamera2.getGlInterface().takePhoto(new TakePhotoCallback() {
-                @Override
-                public void onTakePhoto(Bitmap bitmap) {
-                    MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.VISIBLE));
-                    HandlerThread handlerThread = new HandlerThread("HandlerThreadName");
-                    handlerThread.start();
-                    Looper looper = handlerThread.getLooper();
-                    Handler handler = new Handler(looper);
-
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                long start = System.currentTimeMillis();
-
-                                String filename = "OpenTAKICU_".concat(String.valueOf(System.currentTimeMillis()));
-
-                                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-                                    MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, filename, "image:".concat(filename));
-                                    MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.INVISIBLE));
-                                    MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Saved photo", Toast.LENGTH_SHORT).show());
-                                } else {
-                                    boolean savedSuccessfully;
-                                    OutputStream fos;
-                                    ContentResolver resolver =  context.getContentResolver();
-                                    ContentValues contentValues = new ContentValues();
-                                    contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename);
-                                    contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "image/png");
-                                    contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, "DCIM/OpenTAKICU");
-                                    Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
-                                    fos = resolver.openOutputStream(imageUri);
-
-                                    MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.INVISIBLE));
-                                    savedSuccessfully = bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                                    fos.flush();
-                                    fos.close();
-
-                                    if (savedSuccessfully) {
-                                        MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Saved photo", Toast.LENGTH_SHORT).show());
-                                    } else {
-                                        Log.d(LOGTAG, "Failed to save photo");
-                                        MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Failed to save photo", Toast.LENGTH_SHORT).show());
-                                    }
-                                }
-                            } catch (NullPointerException | IOException e) {
-                                    Log.d(LOGTAG, "Failed to save photo: ".concat(e.getMessage()));
-                                    MainActivity.this.runOnUiThread(() -> Toast.makeText(context, "Failed to save photo: ".concat(e.getMessage()), Toast.LENGTH_SHORT).show());
-                            }
-                        }
-                    });
-                }
-            });
+            MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.VISIBLE));
+            camera_service.take_photo();
         }
-    }
-
-    private void startRecording() {
-        if (record) {
-            try {
-                if (!folder.exists()) {
-                    folder.mkdir();
-                }
-
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
-                currentDateAndTime = sdf.format(new Date());
-                if (!camera2Base.isStreaming()) {
-                    if (prepareEncoders()) {
-                        camera2Base.startRecord(
-                                folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
-                        lockScreenOrientation();
-                        Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(this, "Error preparing stream, This device cant do it",
-                                Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    camera2Base.startRecord(
-                            folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
-                    lockScreenOrientation();
-                    Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
-                }
-            } catch (IOException e) {
-                camera2Base.stopRecord();
-                unlockScreenOrientation();
-                PathUtils.updateGallery(this, folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
-                Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    private void stopRecording() {
-        if (camera2Base.isRecording()) {
-            camera2Base.stopRecord();
-            unlockScreenOrientation();
-            PathUtils.updateGallery(this, folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
-            Toast.makeText(this,
-                    "file ".concat(currentDateAndTime).concat(".mp4 saved in ").concat(folder.getAbsolutePath()),
-                    Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private boolean prepareEncoders() {
-        Log.d(LOGTAG, "prepareEncoders");
-        int width = resolution.getWidth();
-        int height = resolution.getHeight();
-        fps = Integer.parseInt(pref.getString("fps", "30"));
-        bitrate = Integer.parseInt(pref.getString("bitrate", "1000"));
-        audio_bitrate = Integer.parseInt(pref.getString("audioBitrate", "128"));
-        samplerate = Integer.parseInt(pref.getString("samplerate", "44100"));
-        stereo = pref.getBoolean("stereo", true);
-        echo_cancel = pref.getBoolean("echo_cancel", true);
-        noise_reduction = pref.getBoolean("noise_reduction", true);
-
-        if (Objects.equals(codec, "H264"))
-            camera2Base.setVideoCodec(VideoCodec.H264);
-        else if (Objects.equals(codec, "H265"))
-            camera2Base.setVideoCodec(VideoCodec.H265);
-        else if (Objects.equals(codec, "AV1"))
-            camera2Base.setVideoCodec(VideoCodec.AV1);
-
-
-        if (Objects.equals(audio_codec, "G711"))
-            try {
-                camera2Base.setAudioCodec(AudioCodec.G711);
-                Log.d(LOGTAG, "Set audio codec to G711");
-            } catch (RuntimeException e) {
-                camera2Base.setAudioCodec(AudioCodec.AAC);
-                Log.d(LOGTAG, "Failed to set audio codec to  G711, falling back to AAC");
-            }
-        else {
-            camera2Base.setAudioCodec(AudioCodec.AAC);
-            Log.d(LOGTAG, "Set audio codec to AAC");
-        }
-
-        Log.d(LOGTAG, "Setting bitrate to ".concat(String.valueOf(bitrate)));
-        Log.d(LOGTAG, "Setting res to ".concat(String.valueOf(width)).concat(" x ").concat(String.valueOf(height)));
-
-        addCert();
-
-        boolean prepareVideo = camera2Base.prepareVideo(width, height, fps,
-                bitrate * 1024,
-                CameraHelper.getCameraOrientation(this));
-
-
-        boolean prepareAudio = camera2Base.prepareAudio(
-                    audio_bitrate * 1024,
-                    samplerate,
-                    stereo,
-                    echo_cancel,
-                    noise_reduction);
-
-        if (!enable_audio) {
-            Log.d(LOGTAG, "disabling audio");
-            camera2Base.disableAudio();
-        } else {
-            camera2Base.enableAudio();
-            Log.d(LOGTAG, "enabling audio");
-        }
-
-        Log.d(LOGTAG, "PrepareVideo: ".concat(String.valueOf(prepareVideo)).concat(" Audio ").concat(String.valueOf(prepareAudio)));
-        return prepareVideo && prepareAudio;
-    }
-
-    @Override
-    public void onConnectionStarted(@NotNull String rtspUrl) {
-    }
-
-    @Override
-    public void onConnectionSuccess() {
-        Toast.makeText(MainActivity.this, "Connection success", Toast.LENGTH_SHORT).show();
-        if (adaptive_bitrate) {
-            tvBitrate.setText("ADAPTIVE ENABLED");
-            bitrateAdapter = new BitrateAdapter(new BitrateAdapter.Listener() {
-                @Override
-                public void onBitrateAdapted(int bitrate) {
-                    camera2Base.setVideoBitrateOnFly(bitrate);
-                    Log.d(LOGTAG, "Set bitrate to ".concat(String.valueOf(bitrate)));
-                    tvBitrate.setText(String.valueOf(bitrate).concat(" bps"));
-                }
-            });
-            bitrateAdapter.setMaxBitrate(camera2Base.getBitrate());
-        }
-        else tvBitrate.setText("ADAPTIVE SHIT NOT ENABLED");
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull final String reason) {
-        Toast.makeText(MainActivity.this, "Connection failed. ".concat(reason), Toast.LENGTH_SHORT)
-                .show();
-        camera2Base.stopStream();
-        stopRecording();
-        bStartStop.setImageResource(R.drawable.ic_record);
-        Log.d(LOGTAG, "Connection failed: ".concat(reason));
-    }
-
-    @Override
-    public void onNewBitrate(final long bitrate) {
-        if (bitrateAdapter != null) {
-            bitrateAdapter.adaptBitrate(bitrate, camera2Base.getStreamClient().hasCongestion());
-        }
-    }
-
-    @Override
-    public void onDisconnect() {
-        bStartStop.setImageResource(R.drawable.ic_record);
-        Toast.makeText(MainActivity.this, "Disconnected", Toast.LENGTH_SHORT).show();
-    }
-
-    @Override
-    public void onAuthError() {
-        bStartStop.setImageResource(R.drawable.ic_record);
-        camera2Base.stopStream();
-        stopRecording();
-        Toast.makeText(MainActivity.this, "Auth error", Toast.LENGTH_SHORT).show();
-    }
-
-    @Override
-    public void onAuthSuccess() {
-        Toast.makeText(MainActivity.this, "Auth success", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public boolean onTouch(View view, MotionEvent motionEvent) {
         int action = motionEvent.getAction();
         if (motionEvent.getPointerCount() > 1) {
-            if (action == MotionEvent.ACTION_MOVE) {
-                camera2Base.setZoom(motionEvent);
+            if (action == MotionEvent.ACTION_MOVE && camera_service != null) {
+                camera_service.setZoom(motionEvent);
             }
-        } else if (action == MotionEvent.ACTION_DOWN) {
-            camera2Base.tapToFocus(motionEvent);
+        } else if (action == MotionEvent.ACTION_DOWN && camera_service != null) {
+            camera_service.tapToFocus(motionEvent);
         }
         return true;
     }
 
     @Override
     public void surfaceCreated(@NonNull SurfaceHolder surfaceHolder) {
-
+        Log.d(LOGTAG, "surfacecreated");
     }
 
     @Override
     public void surfaceChanged(@NonNull SurfaceHolder surfaceHolder, int format, int width, int height) {
-        camera2Base.startPreview();
+        Log.d(LOGTAG, "surfacechanged");
+        if (camera_service != null && openGlView.getHolder().getSurface().isValid()) {
+            camera_service.setView(openGlView);
+
+            camera_service.startPreview();
+        }
+
     }
 
     @Override
     public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
-        if (camera2Base.isRecording()) {
-            camera2Base.stopRecord();
-            PathUtils.updateGallery(this, folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
-            Toast.makeText(this,
-                    "file ".concat(currentDateAndTime).concat(".mp4 saved in ").concat(folder.getAbsolutePath()),
-                    Toast.LENGTH_SHORT).show();
-            currentDateAndTime = "";
+        Log.d(LOGTAG, "surfaceDestroyed");
+        if (camera_service != null) {
+            camera_service.setView(this);
+            camera_service.stopPreview();
         }
-        if (camera2Base.isStreaming()) {
-            camera2Base.stopStream();
-            bStartStop.setImageResource(R.drawable.ic_record);
-        }
-        unlockScreenOrientation();
-        camera2Base.stopPreview();
-    }
-
-    private void getSettings() {
-        protocol = pref.getString("protocol", "rtsp");
-
-        if (protocol.equals("srt")) {
-            srtCamera2 = new SrtCamera2(openGlView, this);
-            camera2Base = srtCamera2;
-            rtspCamera2 = null;
-            rtmpCamera2 = null;
-        }
-        else if (protocol.startsWith("rtmp")) {
-            rtmpCamera2 = new RtmpCamera2(openGlView, this);
-            camera2Base = rtmpCamera2;
-            rtspCamera2 = null;
-            srtCamera2 = null;
-
-        }
-        else {
-            rtspCamera2 = new RtspCamera2(openGlView, this);
-            camera2Base = rtspCamera2;
-            rtmpCamera2 = null;
-            srtCamera2 = null;
-        }
-
-        stream = pref.getBoolean("stream_video", true);
-        enable_audio = pref.getBoolean("enable_audio", true);
-        address = pref.getString("address", "192.168.1.10");
-        port = Integer.parseInt(pref.getString("port", "8554"));
-        path = pref.getString("path", "stream");
-        username = pref.getString("username", "administrator");
-        password = pref.getString("password", "password");
-        certFile = pref.getString("certificate", null);
-        Log.d(LOGTAG, "Got cert: " + certFile);
-        samplerate = Integer.parseInt(pref.getString("samplerate", "44100"));
-        stereo = pref.getBoolean("stereo", true);
-        echo_cancel = pref.getBoolean("echo_cancel", true);
-        noise_reduction = pref.getBoolean("noise_reduction", true);
-        fps = Integer.parseInt(pref.getString("fps", "30"));
-        record = pref.getBoolean("record", false);
-        codec = pref.getString("codec", "H264");
-        audio_codec = pref.getString("audio_codec", "AAC");
-        adaptive_bitrate = pref.getBoolean("adaptive_bitrate", true);
-        getResolution();
-        prepareEncoders();
-    }
-
-    private void getResolution() {
-        ArrayList<Size> resolutions = new ArrayList<>();
-        List<Size> frontResolutions = camera2Base.getResolutionsFront();
-
-        // Only get resolutions supported by both cameras
-        for (Size res : camera2Base.getResolutionsBack()) {
-            if (frontResolutions.contains(res)) {
-                resolutions.add(res);
-            }
-        }
-
-        resolution = resolutions.get(Integer.parseInt(pref.getString("resolution", "0")));
-        Log.d(LOGTAG, "getResultion ".concat(String.valueOf(resolution.getWidth())).concat(" x ").concat(String.valueOf(resolution.getHeight())));
-    }
-
-    @Override
-    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
-        getSettings();
     }
 }
