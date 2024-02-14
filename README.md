@@ -9,6 +9,9 @@ that can stream audio and video to RTSP(S), RTMP(S), and SRT servers such as
 While ATAK already has the TAK ICU plugin, it doesn't seem to support a few features. Specifically
 it doesn't support streaming audio or using authentication and encryption (RTSPS) at the same time.
 
+## Download
+Get the [APK](OpenTAKICU-1.0.0.apk) from this repo
+
 ## Features
 - Video Codecs
   - H264
