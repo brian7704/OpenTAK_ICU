@@ -1,16 +1,9 @@
 package io.opentakserver.opentakicu;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.preference.PreferenceManager;
-import android.provider.Settings;
 import android.text.method.LinkMovementMethod;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -19,11 +12,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.github.appintro.AppIntro;
@@ -31,13 +20,8 @@ import com.github.appintro.SlidePolicy;
 import com.github.appintro.model.SliderPagerBuilder;
 
 import org.jetbrains.annotations.Nullable;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -46,13 +30,11 @@ import androidx.core.widget.TextViewCompat;
 import androidx.fragment.app.Fragment;
 
 public class OnBoardingActivity extends AppIntro {
-    private static final String TAG = "OnBoardingActivity";
-    public static final String ENABLE_BACK_BUTTON = "back_enabled";
+    private static final String ENABLE_BACK_BUTTON = "back_enabled";
     private static final String LOGTAG = "OnBoardingActivity";
     private static final String WELCOME_SLIDE = "welcome_slide";
     private static final String PERMISSIONS_SLIDE = "permissions_slide";
     private static final String STORAGE_SLIDE = "storage_slide";
-    private static final String BACKGROUND_LOCATION_SLIDE = "background_location_slide";
     private static final String FINALIZE_SLIDE = "finalize_slide";
 
     public static class CustomLayout extends Fragment implements SlidePolicy {
@@ -86,7 +68,7 @@ public class OnBoardingActivity extends AppIntro {
 
             // Fix excessive vertical padding, causing scroll
             ViewGroup.LayoutParams lp = tv.getLayoutParams();
-            if(lp instanceof ConstraintLayout.LayoutParams) {
+            if (lp instanceof ConstraintLayout.LayoutParams) {
                 ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) lp;
                 params.setMargins(0, (int)TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, metrics), 0, 0);
                 tv.setPadding(tv.getPaddingLeft(), 0, tv.getPaddingRight(), 0);
@@ -165,22 +147,10 @@ public class OnBoardingActivity extends AppIntro {
                 getText(R.string.permissions_slide_description),
                 R.mipmap.ic_launcher, true, PERMISSIONS_SLIDE));
 
-        int slide_number = 3;
-
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             addSlide(CustomLayout.createInstance(getString(R.string.storage_slide_title), getString(R.string.storage_slide_description), R.mipmap.ic_launcher, true, STORAGE_SLIDE));
             String[] storage_permission = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
-            askForPermissions(storage_permission, slide_number, true);
-            slide_number++;
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            addSlide(CustomLayout.createInstance(getString(R.string.background_location_permission),
-                    getText(R.string.background_location_permissions_slide_description),
-                    R.mipmap.ic_launcher, true, BACKGROUND_LOCATION_SLIDE));
-
-            String[] background_location_permission = new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION};
-            askForPermissions(background_location_permission, slide_number, true);
+            askForPermissions(storage_permission, 3, false);
         }
 
         addSlide(CustomLayout.createInstance(getString(R.string.finished),
@@ -188,10 +158,8 @@ public class OnBoardingActivity extends AppIntro {
                 R.mipmap.ic_launcher, true, FINALIZE_SLIDE));
 
         ArrayList<String> permissions = new ArrayList<>();
-        permissions.add(android.Manifest.permission.RECORD_AUDIO);
-        permissions.add(android.Manifest.permission.CAMERA);
-        permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
-        permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        permissions.add(Manifest.permission.RECORD_AUDIO);
+        permissions.add(Manifest.permission.CAMERA);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS);

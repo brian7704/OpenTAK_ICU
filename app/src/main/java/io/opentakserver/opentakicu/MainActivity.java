@@ -105,6 +105,7 @@ public class MainActivity extends AppCompatActivity
             Intent intent = new Intent(MainActivity.this, OnBoardingActivity.class);
             startActivity(intent);
             finish();
+            return;
         }
 
         tvBitrate = findViewById(R.id.tv_bitrate);
@@ -203,7 +204,7 @@ public class MainActivity extends AppCompatActivity
         PERMISSIONS.add(Manifest.permission.RECORD_AUDIO);
         PERMISSIONS.add(Manifest.permission.CAMERA);
 
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
             PERMISSIONS.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
