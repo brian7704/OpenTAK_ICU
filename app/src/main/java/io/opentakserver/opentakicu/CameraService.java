@@ -394,17 +394,10 @@ public class CameraService extends Service implements ConnectChecker,
         }
     }
 
-    private boolean prepareEncoders() {
+    public boolean prepareEncoders() {
         Log.d(LOGTAG, "prepareEncoders");
         int width = resolution.getWidth();
         int height = resolution.getHeight();
-        fps = Integer.parseInt(preferences.getString("fps", "30"));
-        bitrate = Integer.parseInt(preferences.getString("bitrate", "1000"));
-        audio_bitrate = Integer.parseInt(preferences.getString("audioBitrate", "128"));
-        samplerate = Integer.parseInt(preferences.getString("samplerate", "44100"));
-        stereo = preferences.getBoolean("stereo", true);
-        echo_cancel = preferences.getBoolean("echo_cancel", true);
-        noise_reduction = preferences.getBoolean("noise_reduction", true);
 
         if (Objects.equals(codec, "H264"))
             genericCamera2.setVideoCodec(VideoCodec.H264);
@@ -413,21 +406,21 @@ public class CameraService extends Service implements ConnectChecker,
         else if (Objects.equals(codec, "AV1"))
             genericCamera2.setVideoCodec(VideoCodec.AV1);
 
-
         if (Objects.equals(audio_codec, "G711"))
             try {
                 genericCamera2.setAudioCodec(AudioCodec.G711);
                 Log.d(LOGTAG, "Set audio codec to G711");
             } catch (RuntimeException e) {
                 genericCamera2.setAudioCodec(AudioCodec.AAC);
-                Log.d(LOGTAG, "Failed to set audio codec to  G711, falling back to AAC");
+                Log.d(LOGTAG, "Failed to set audio codec to G711, falling back to AAC: " + e.getMessage());
             }
         else {
             genericCamera2.setAudioCodec(AudioCodec.AAC);
             Log.d(LOGTAG, "Set audio codec to AAC");
         }
 
-        Log.d(LOGTAG, "Setting bitrate to ".concat(String.valueOf(bitrate)));
+        Log.d(LOGTAG, "Setting video bitrate to ".concat(String.valueOf(bitrate)));
+        Log.d(LOGTAG, "Setting audio bitrate to ".concat(String.valueOf(audio_bitrate)));
         Log.d(LOGTAG, "Setting res to ".concat(String.valueOf(width)).concat(" x ").concat(String.valueOf(height)));
 
         addCert();
@@ -456,7 +449,7 @@ public class CameraService extends Service implements ConnectChecker,
         return prepareVideo && prepareAudio;
     }
 
-    private void getSettings() {
+    public void getSettings() {
         Log.d(LOGTAG, "Get settings");
         protocol = preferences.getString("protocol", "rtsp");
 
@@ -480,6 +473,8 @@ public class CameraService extends Service implements ConnectChecker,
         fps = Integer.parseInt(preferences.getString("fps", "30"));
         record = preferences.getBoolean("record", false);
         codec = preferences.getString("codec", "H264");
+        bitrate = Integer.parseInt(preferences.getString("bitrate", "3000"));
+        audio_bitrate = Integer.parseInt(preferences.getString("audio_bitrate", "128"));
         audio_codec = preferences.getString("audio_codec", "AAC");
         adaptive_bitrate = preferences.getBoolean("adaptive_bitrate", true);
         getResolution();
@@ -528,7 +523,6 @@ public class CameraService extends Service implements ConnectChecker,
                     if (prepareEncoders()) {
                         genericCamera2.startRecord(
                                 folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
-                        //lockScreenOrientation();
                         Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
                     } else {
                         showNotification(getString(R.string.error_preparing_stream));
@@ -536,7 +530,6 @@ public class CameraService extends Service implements ConnectChecker,
                 } else {
                     genericCamera2.startRecord(
                             folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
-                    //lockScreenOrientation();
                     Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
                 }
             } catch (IOException e) {
@@ -634,8 +627,7 @@ public class CameraService extends Service implements ConnectChecker,
                         contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, "DCIM/OpenTAKICU");
                         Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
                         fos = resolver.openOutputStream(imageUri);
-
-                        getApplicationContext().sendBroadcast(new Intent(TOOK_PICTURE));
+                        getApplicationContext().sendBroadcast(new Intent(TOOK_PICTURE).setPackage(getPackageName()));
                         savedSuccessfully = bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
                         fos.flush();
                         fos.close();

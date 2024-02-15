@@ -10,6 +10,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -281,7 +282,6 @@ public class MainActivity extends AppCompatActivity
         Log.d(LOGTAG, "surfacechanged");
         if (camera_service != null && openGlView.getHolder().getSurface().isValid()) {
             camera_service.setView(openGlView);
-
             camera_service.startPreview();
         }
 
@@ -294,5 +294,15 @@ public class MainActivity extends AppCompatActivity
             camera_service.setView(this);
             camera_service.stopPreview();
         }
+    }
+
+    //Handle screen rotation
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        Log.d(LOGTAG, "onConfigChange " + newConfig);
+        camera_service.stopPreview();
+        camera_service.prepareEncoders();
+        camera_service.startPreview();
     }
 }
