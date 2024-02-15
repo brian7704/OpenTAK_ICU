@@ -10,7 +10,7 @@ While ATAK already has the TAK ICU plugin, it doesn't seem to support a few feat
 it doesn't support streaming audio or using authentication and encryption (RTSPS) at the same time.
 
 ## Download
-Get the [APK](OpenTAKICU-1.0.0.apk) from this repo
+Get the APK from this repo's [latest release](https://github.com/brian7704/OpenTAK_ICU/releases/latest)
 
 ## Features
 - Video Codecs
