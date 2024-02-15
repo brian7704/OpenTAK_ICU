@@ -1,4 +1,9 @@
+![GitHub Release Date](https://img.shields.io/github/release-date/brian7704/OpenTAK_ICU)
+![GitHub Release](https://img.shields.io/github/v/release/brian7704/OpenTAK_ICU)
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fbrian7704%2FOpenTAK_ICU&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/brian7704/OpenTAK_ICU/total)
+
+
 
 # OpenTAK ICU
 
