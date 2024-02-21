@@ -63,20 +63,92 @@
             android:key="certificate"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Certificate"
+            android:title="@string/trust_store_cert"
             app:summary="@string/certificate_description"
             android:dependency="self_signed_cert" />
         <EditTextPreference
             android:key="certificate_password"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Certificate Password"
+            android:defaultValue="atakatak"
+            android:title="@string/trust_store_cert_password"
             android:dependency="self_signed_cert" />
         <Preference
             android:key="test_certificate"
             android:title="Test Certificate"
             app:summary="@string/test_certificate_description"
             android:dependency="self_signed_cert" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/atak_preferences">
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="send_cot"
+            android:title="@string/send_cots"
+            app:summary=""
+            android:dependency="stream_video" />
+        <EditTextPreference
+            android:key="atak_address"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/atak_address"
+            android:dependency="send_cot" />
+        <EditTextPreference
+            android:key="atak_address"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/atak_port"
+            android:dependency="send_cot" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="atak_auth"
+            android:title="@string/atak_auth"
+            app:summary=""
+            android:dependency="send_cot" />
+        <EditTextPreference
+            android:key="atak_username"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/atak_username"
+            android:dependency="atak_auth" />
+        <EditTextPreference
+            android:key="atak_password"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/atak_password"
+            android:dependency="atak_auth" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="atak_ssl"
+            android:title="@string/atak_ssl"
+            app:summary="@string/atak_ssl_summary"
+            android:dependency="send_cot" />
+        <Preference
+            android:key="trust_store_certificate"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/trust_store_cert"
+            android:dependency="atak_ssl" />
+        <EditTextPreference
+            android:key="trust_store_cert_password"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:defaultValue="atakatak"
+            android:title="@string/trust_store_cert_password"
+            android:dependency="atak_ssl" />
+        <Preference
+            android:key="client_certificate"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/client_cert"
+            android:dependency="atak_ssl" />
+        <EditTextPreference
+            android:key="client_cert_password"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:defaultValue="atakatak"
+            android:title="@string/client_cert_password"
+            android:dependency="atak_ssl" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="Video Settings">

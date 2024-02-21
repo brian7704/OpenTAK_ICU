@@ -113,4 +113,18 @@
     <string name="saved_photo_failed">Failed to save photo</string>
     <string name="connection_failed">Connection Failed</string>
     <string name="error_preparing_stream">Error preparing screen, choose different audio/video codecs and try again</string>
+    <string name="no_location_permissions">Location permission denied, will not send CoTs</string>
+    <string name="atak_preferences">ATAK Preferences</string>
+    <string name="send_cots">Send Location CoTs to an ATAK server</string>
+    <string name="atak_address">ATAK Address</string>
+    <string name="atak_username">ATAK Username</string>
+    <string name="atak_password">ATAK Password</string>
+    <string name="trust_store_cert">Trust Store Certificate</string>
+    <string name="trust_store_cert_password">Trust Store Certificate Password</string>
+    <string name="client_cert">Client Certificate</string>
+    <string name="client_cert_password">Client Certificate Password</string>
+    <string name="atak_port">ATAK Port</string>
+    <string name="atak_auth">Enable ATAK Authentication</string>
+    <string name="atak_ssl">Connect to ATAK via SSL</string>
+    <string name="atak_ssl_summary">Disable for TCP</string>
 </resources>

@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.lifecycle.MutableLiveData;
 import androidx.preference.PreferenceManager;
@@ -21,8 +22,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
@@ -43,7 +48,6 @@ import com.pedro.encoder.input.video.CameraHelper;
 import com.pedro.library.generic.GenericCamera2;
 import com.pedro.library.util.BitrateAdapter;
 import com.pedro.library.view.OpenGlView;
-import com.pedro.library.view.TakePhotoCallback;
 import com.pedro.rtsp.rtsp.Protocol;
 
 import java.io.File;
@@ -112,6 +116,9 @@ public class CameraService extends Service implements ConnectChecker,
     private String currentDateAndTime;
     public static MutableLiveData<CameraService> observer = new MutableLiveData<>();
 
+    private LocationListener _locListener;
+    private LocationManager _locManager;
+
     final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -136,7 +143,8 @@ public class CameraService extends Service implements ConnectChecker,
         }
     };
 
-    public CameraService() {}
+    public CameraService() {
+    }
 
     @Override
     public void onCreate() {
@@ -183,6 +191,9 @@ public class CameraService extends Service implements ConnectChecker,
         } else {
             registerReceiver(receiver, intentFilter);
         }
+
+        _locListener = new ICULocationListener();
+        _locManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
     }
 
     private NotificationCompat.Action startStreamAction() {
@@ -557,7 +568,7 @@ public class CameraService extends Service implements ConnectChecker,
         if (!genericCamera2.isStreaming() && !genericCamera2.isRecording()) {
             if (protocol.equals("rtsp") && tcp) {
                 genericCamera2.getStreamClient().setProtocol(Protocol.TCP);
-            } else if (Objects.equals(protocol, "rtsp")){
+            } else if (Objects.equals(protocol, "rtsp")) {
                 genericCamera2.getStreamClient().setProtocol(Protocol.UDP);
             }
 
@@ -580,6 +591,13 @@ public class CameraService extends Service implements ConnectChecker,
                 if (stream) {
                     genericCamera2.startStream(url);
                     Log.d(LOGTAG, "Started stream to ".concat(url));
+                    if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                            ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        //This will probably never show since the OnBoardingActivity forces users to grant permission before using the app
+                        Toast.makeText(getApplicationContext(), R.string.no_location_permissions, Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
 
                     showNotification(getString(R.string.stream_in_progress));
                 }
@@ -645,5 +663,17 @@ public class CameraService extends Service implements ConnectChecker,
                 }
             });
         });
+    }
+
+    class ICULocationListener implements LocationListener {
+        @Override
+        public void onLocationChanged(@NonNull Location location) {
+            Log.d(LOGTAG, "onLocationChanged");
+            try {
+                Log.d(LOGTAG, location.toString());
+            } catch (Exception e) {
+                Log.e(LOGTAG, "Failed to send location to traccar: " + e.getLocalizedMessage());
+            }
+        }
     }
 }
