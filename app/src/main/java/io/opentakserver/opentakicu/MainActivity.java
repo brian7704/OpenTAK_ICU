@@ -204,10 +204,14 @@ public class MainActivity extends AppCompatActivity
     private void permissions() {
         PERMISSIONS.add(Manifest.permission.RECORD_AUDIO);
         PERMISSIONS.add(Manifest.permission.CAMERA);
+        PERMISSIONS.add(Manifest.permission.ACCESS_FINE_LOCATION);
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
             PERMISSIONS.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            PERMISSIONS.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             PERMISSIONS.add(Manifest.permission.POST_NOTIFICATIONS);
         }
