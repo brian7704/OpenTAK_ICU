@@ -11,7 +11,10 @@ public class Sensor {
     private double azimuth = 180;
     private double range = 100;
 
-    public Sensor() {}
+    public Sensor(double fov, double azimuth) {
+        this.fov = fov;
+        this.azimuth = azimuth;
+    }
 
     @JacksonXmlProperty(isAttribute = true)
     public int getDisplayMagneticReference() {

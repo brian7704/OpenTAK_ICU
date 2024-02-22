@@ -10,7 +10,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.lifecycle.MutableLiveData;
 import androidx.preference.PreferenceManager;
-import io.opentakserver.opentakicu.cot.ConnectionEntry;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
 import io.opentakserver.opentakicu.cot.Device;
@@ -39,6 +38,10 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.hardware.camera2.CameraCharacteristics;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -52,6 +55,7 @@ import android.os.Looper;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.util.Size;
+import android.util.SizeF;
 import android.view.MotionEvent;
 import android.widget.Toast;
 
@@ -62,6 +66,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.pedro.common.AudioCodec;
 import com.pedro.common.ConnectChecker;
 import com.pedro.common.VideoCodec;
+import com.pedro.encoder.input.video.CameraCallbacks;
 import com.pedro.encoder.input.video.CameraHelper;
 import com.pedro.library.generic.GenericCamera2;
 import com.pedro.library.util.BitrateAdapter;
@@ -89,7 +94,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
 public class CameraService extends Service implements ConnectChecker,
-        SharedPreferences.OnSharedPreferenceChangeListener {
+        SharedPreferences.OnSharedPreferenceChangeListener, SensorEventListener {
     static final String START_STREAM = "start_stream";
     static final String STOP_STREAM = "stop_stream";
     static final String EXIT_APP = "exit_app";
@@ -130,6 +135,17 @@ public class CameraService extends Service implements ConnectChecker,
     private String audio_codec;
     private String codec;
     private String uid;
+    private double horizonalFov;
+    private double verticalFov;
+
+    private SensorManager sensorManager;
+    private android.hardware.Sensor magnetometer;
+    private android.hardware.Sensor accelerometer;
+    private float[] gravityData = new float[3];
+    private float[] geomagneticData  = new float[3];
+    private boolean hasGravityData = false;
+    private boolean hasGeomagneticData = false;
+    private double rotationInDegrees;
 
     private boolean exiting = false;
     private final IBinder binder = new LocalBinder();
@@ -226,6 +242,40 @@ public class CameraService extends Service implements ConnectChecker,
 
         _locListener = new ICULocationListener();
         _locManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
+
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        magnetometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_MAGNETIC_FIELD);
+        accelerometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER);
+
+        genericCamera2.setCameraCallbacks(new CameraCallbacks() {
+            @Override
+            public void onCameraChanged(@NonNull CameraHelper.Facing facing) {
+                CameraCharacteristics cameraCharacteristics = genericCamera2.getCameraCharacteristics();
+                float[] maxFocus = cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+                SizeF size = cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+                float w = size.getWidth();
+                float h = size.getHeight();
+                horizonalFov = (2*Math.atan(w/(maxFocus[0]*2))) * 180/Math.PI;
+                verticalFov = (2*Math.atan(h/(maxFocus[0]*2))) * 180/Math.PI;
+                Log.d(LOGTAG, "horizontalFov = " + horizonalFov);
+                Log.d(LOGTAG, "verticalFov = " + verticalFov);
+            }
+
+            @Override
+            public void onCameraError(@NonNull String s) {
+
+            }
+
+            @Override
+            public void onCameraOpened() {
+
+            }
+
+            @Override
+            public void onCameraDisconnected() {
+
+            }
+        });
     }
 
     private NotificationCompat.Action startStreamAction() {
@@ -341,6 +391,41 @@ public class CameraService extends Service implements ConnectChecker,
     @Override
     public int onStartCommand(Intent intent, int flags, int start_id) {
         return START_STICKY;
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent sensorEvent) {
+        switch (sensorEvent.sensor.getType()){
+            case android.hardware.Sensor.TYPE_ACCELEROMETER:
+                System.arraycopy(sensorEvent.values, 0, gravityData, 0, 3);
+                hasGravityData = true;
+                break;
+            case android.hardware.Sensor.TYPE_MAGNETIC_FIELD:
+                System.arraycopy(sensorEvent.values, 0, geomagneticData, 0, 3);
+                hasGeomagneticData = true;
+                break;
+            default:
+                return;
+        }
+
+        if (hasGravityData && hasGeomagneticData) {
+            float identityMatrix[] = new float[9];
+            float rotationMatrix[] = new float[9];
+            boolean success = SensorManager.getRotationMatrix(rotationMatrix, identityMatrix,
+                    gravityData, geomagneticData);
+
+            if (success) {
+                float orientationMatrix[] = new float[3];
+                SensorManager.getOrientation(rotationMatrix, orientationMatrix);
+                float rotationInRadians = orientationMatrix[0];
+                rotationInDegrees = Math.toDegrees(rotationInRadians);
+            }
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(android.hardware.Sensor sensor, int i) {
+
     }
 
     public class LocalBinder extends Binder {
@@ -634,6 +719,9 @@ public class CameraService extends Service implements ConnectChecker,
                     postVideoStream();
                     executor.execute(() -> tcpClient.run());
 
+                    sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
+                    sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+
                     showNotification(getString(R.string.stream_in_progress));
                 }
 
@@ -652,6 +740,8 @@ public class CameraService extends Service implements ConnectChecker,
         if (tcpClient != null)
             tcpClient.stopClient();
         stopRecording();
+        sensorManager.unregisterListener(this, magnetometer);
+        sensorManager.unregisterListener(this, accelerometer);
 
         _locManager.removeUpdates(_locListener);
     }
@@ -690,12 +780,12 @@ public class CameraService extends Service implements ConnectChecker,
                         if (savedSuccessfully) {
                             showNotification(getString(R.string.saved_photo));
                         } else {
-                            Log.d(LOGTAG, "Failed to save photo");
+                            Log.e(LOGTAG, "Failed to save photo");
                             showNotification(getString(R.string.saved_photo_failed));
                         }
                     }
                 } catch (NullPointerException | IOException e) {
-                    Log.d(LOGTAG, "Failed to save photo: ".concat(e.getMessage()));
+                    Log.e(LOGTAG, "Failed to save photo: ".concat(e.getMessage()));
                     showNotification(getString(R.string.saved_photo_failed) + ": " + e.getMessage());
                 }
             });
@@ -707,7 +797,6 @@ public class CameraService extends Service implements ConnectChecker,
         public void onLocationChanged(@NonNull Location location) {
             Log.d(LOGTAG, "onLocationChanged");
             try {
-                Log.d(LOGTAG, location.toString());
                 event event = new event();
                 event.setUid(uid);
 
@@ -719,8 +808,8 @@ public class CameraService extends Service implements ConnectChecker,
                 String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port)).concat("/").concat(path);
                 __Video __video = new __Video(url, uid);
 
-                Device device = new Device(0,0);
-                Sensor sensor = new Sensor();
+                Device device = new Device(rotationInDegrees,0);
+                Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
 
                 Detail detail = new Detail(contact, __video, device, sensor);
                 event.setDetail(detail);
@@ -734,7 +823,6 @@ public class CameraService extends Service implements ConnectChecker,
                 String cot = xmlMapper.writeValueAsString(event);
                 if (tcpClient != null)
                     tcpClient.sendMessage(cot);
-                Log.d(LOGTAG, cot);
 
             } catch (Exception e) {
                 Log.e(LOGTAG, "Failed to send location to ATAK: " + e.getLocalizedMessage());
@@ -753,8 +841,6 @@ public class CameraService extends Service implements ConnectChecker,
 
             XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
 
-            Log.d(LOGTAG, "http://" + address + ":8080/Marti/vcm");
-            Log.d(LOGTAG, xmlMapper.writeValueAsString(VideoConnections));
             RequestBody requestBody = RequestBody.create(xmlMapper.writeValueAsString(VideoConnections).getBytes());
             Request request = new Request.Builder()
                     .url("http://" + address + ":8080/Marti/vcm")

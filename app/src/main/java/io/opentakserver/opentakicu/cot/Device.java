@@ -3,29 +3,29 @@ package io.opentakserver.opentakicu.cot;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 
 public class Device {
-    private float azimuth;
-    private float pitch;
+    private double azimuth;
+    private double pitch;
 
-    public Device(float azimuth, float pitch) {
+    public Device(double azimuth, double pitch) {
         this.azimuth = azimuth;
         this.pitch = pitch;
     }
 
     @JacksonXmlProperty(isAttribute = true)
-    public float getAzimuth() {
+    public double getAzimuth() {
         return azimuth;
     }
 
-    public void setAzimuth(float azimuth) {
+    public void setAzimuth(double azimuth) {
         this.azimuth = azimuth;
     }
 
     @JacksonXmlProperty(isAttribute = true)
-    public float getPitch() {
+    public double getPitch() {
         return pitch;
     }
 
-    public void setPitch(float pitch) {
+    public void setPitch(double pitch) {
         this.pitch = pitch;
     }
 }

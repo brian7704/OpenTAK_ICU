@@ -48,7 +48,6 @@ public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeList
             @Override
             public void run() {
                 if (mBufferOut != null) {
-                    Log.d(TAG, "Sending: " + message);
                     mBufferOut.println(message);
                     mBufferOut.flush();
                 }
