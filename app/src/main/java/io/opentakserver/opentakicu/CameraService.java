@@ -14,12 +14,18 @@ import io.opentakserver.opentakicu.cot.ConnectionEntry;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
 import io.opentakserver.opentakicu.cot.Device;
+import io.opentakserver.opentakicu.cot.feed;
+import io.opentakserver.opentakicu.cot.videoConnections;
 import io.opentakserver.opentakicu.cot.event;
 import io.opentakserver.opentakicu.cot.Point;
 import io.opentakserver.opentakicu.cot.Sensor;
 import io.opentakserver.opentakicu.cot.__Video;
 import io.opentakserver.opentakicu.utils.PathUtils;
 import kotlin.NotImplementedError;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 import android.app.PendingIntent;
 import android.app.Service;
@@ -134,9 +140,9 @@ public class CameraService extends Service implements ConnectChecker,
 
     private LocationListener _locListener;
     private LocationManager _locManager;
+    private OkHttpClient okHttpClient = new OkHttpClient();
     private TcpClient tcpClient;
     ExecutorService executor = Executors.newSingleThreadExecutor();
-    Handler handler = new Handler(Looper.getMainLooper());
 
     final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
@@ -625,6 +631,7 @@ public class CameraService extends Service implements ConnectChecker,
                         return;
                     }
                     _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
+                    postVideoStream();
                     executor.execute(() -> tcpClient.run());
 
                     showNotification(getString(R.string.stream_in_progress));
@@ -709,9 +716,8 @@ public class CameraService extends Service implements ConnectChecker,
 
                 Contact contact = new Contact(path);
 
-                ConnectionEntry connectionEntry = new ConnectionEntry(address, path, uid, port, path, protocol);
                 String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port)).concat("/").concat(path);
-                __Video __video = new __Video(url, uid, connectionEntry);
+                __Video __video = new __Video(url, uid);
 
                 Device device = new Device(0,0);
                 Sensor sensor = new Sensor();
@@ -731,8 +737,40 @@ public class CameraService extends Service implements ConnectChecker,
                 Log.d(LOGTAG, cot);
 
             } catch (Exception e) {
-                Log.e(LOGTAG, "Failed to send location to traccar: " + e.getLocalizedMessage());
+                Log.e(LOGTAG, "Failed to send location to ATAK: " + e.getLocalizedMessage());
             }
+        }
+    }
+
+    private void postVideoStream() {
+        try {
+            feed Feed = new feed(protocol, path, uid, address, port, path);
+            videoConnections VideoConnections = new videoConnections(Feed);
+            XmlFactory xmlFactory = XmlFactory.builder()
+                    .xmlInputFactory(new WstxInputFactory())
+                    .xmlOutputFactory(new WstxOutputFactory())
+                    .build();
+
+            XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
+
+            Log.d(LOGTAG, "http://" + address + ":8080/Marti/vcm");
+            Log.d(LOGTAG, xmlMapper.writeValueAsString(VideoConnections));
+            RequestBody requestBody = RequestBody.create(xmlMapper.writeValueAsString(VideoConnections).getBytes());
+            Request request = new Request.Builder()
+                    .url("http://" + address + ":8080/Marti/vcm")
+                    .post(requestBody)
+                    .build();
+            executor.execute(() -> {
+                try {
+                    Response response = okHttpClient.newCall(request).execute();
+                    Log.d(LOGTAG, "Posted video: " + response.message());
+                } catch (IOException e) {
+                    Log.e(LOGTAG, "Failed to post video stream: " + e.getMessage());
+                }
+            });
+        } catch (Exception e) {
+            Log.e(LOGTAG, "Failed to post video");
+            Log.e(LOGTAG, e.toString());
         }
     }
 }

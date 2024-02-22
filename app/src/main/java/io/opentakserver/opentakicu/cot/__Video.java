@@ -5,12 +5,10 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 public class __Video {
     private String url;
     private String uid;
-    private ConnectionEntry connectionEntry;
 
-    public __Video(String url, String uid, ConnectionEntry connectionEntry) {
+    public __Video(String url, String uid) {
         this.url = url;
         this.uid = uid;
-        this.connectionEntry = connectionEntry;
     }
 
     @JacksonXmlProperty(isAttribute = true)
@@ -29,14 +27,5 @@ public class __Video {
 
     public void setUid(String uid) {
         this.uid = uid;
-    }
-
-    @JacksonXmlProperty(localName = "ConnectionEntry")
-    public ConnectionEntry getConnectionEntry() {
-        return connectionEntry;
-    }
-
-    public void setConnectionEntry(io.opentakserver.opentakicu.cot.ConnectionEntry ConnectionEntry) {
-        this.connectionEntry = ConnectionEntry;
     }
 }
