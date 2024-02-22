@@ -45,31 +45,31 @@ public class StreamPreferencesFragment extends PreferenceFragmentCompat implemen
         pref = PreferenceManager.getDefaultSharedPreferences(getContext());
 
         fileBrowserLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == Activity.RESULT_OK) {
-                        try {
-                            Intent data = result.getData();
-                            Log.d(LOGTAG, "Got file: " + data.getData().getPath());
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    try {
+                        Intent data = result.getData();
+                        Log.d(LOGTAG, "Got file: " + data.getData().getPath());
 
-                            InputStream certInputStream = getContext().getContentResolver().openInputStream(data.getData());
-                            String certFileName = data.getData().getPath().split(":")[1];
-                            File filesDir = getContext().getFilesDir();
-                            File dest = new File(filesDir.getAbsolutePath() + "/" + certFileName);
+                        InputStream certInputStream = getContext().getContentResolver().openInputStream(data.getData());
+                        String certFileName = data.getData().getPath().split(":")[1];
+                        File filesDir = getContext().getFilesDir();
+                        File dest = new File(filesDir.getAbsolutePath() + "/" + certFileName);
 
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                FileUtils.copy(certInputStream, Files.newOutputStream(dest.toPath()));
-                            } else {
-                                copy(certInputStream, dest);
-                            }
-
-                            pref.edit().putString("certificate_temp", dest.getAbsolutePath()).apply();
-                        } catch (Exception e) {
-                            Log.d(LOGTAG, "Failed to get cert: " + e.getMessage());
-                            e.printStackTrace();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            FileUtils.copy(certInputStream, Files.newOutputStream(dest.toPath()));
+                        } else {
+                            copy(certInputStream, dest);
                         }
+
+                        pref.edit().putString("certificate_temp", dest.getAbsolutePath()).apply();
+                    } catch (Exception e) {
+                        Log.d(LOGTAG, "Failed to get cert: " + e.getMessage());
+                        e.printStackTrace();
                     }
                 }
+            }
         );
     }
 

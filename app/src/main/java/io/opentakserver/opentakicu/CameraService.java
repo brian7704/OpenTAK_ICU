@@ -13,6 +13,7 @@ import androidx.preference.PreferenceManager;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
 import io.opentakserver.opentakicu.cot.Device;
+import io.opentakserver.opentakicu.cot.Takv;
 import io.opentakserver.opentakicu.cot.feed;
 import io.opentakserver.opentakicu.cot.videoConnections;
 import io.opentakserver.opentakicu.cot.event;
@@ -138,6 +139,10 @@ public class CameraService extends Service implements ConnectChecker,
     private double horizonalFov;
     private double verticalFov;
 
+    private boolean send_cot = false;
+    private String atak_address;
+    private int atak_port = 8088;
+
     private SensorManager sensorManager;
     private android.hardware.Sensor magnetometer;
     private android.hardware.Sensor accelerometer;
@@ -231,7 +236,7 @@ public class CameraService extends Service implements ConnectChecker,
         }
 
         executor.execute(() -> {
-            tcpClient = new TcpClient(address, 8088, new TcpClient.OnMessageReceived() {
+            tcpClient = new TcpClient(getApplicationContext(), address, port, new TcpClient.OnMessageReceived() {
                 @Override
                 //here the messageReceived method is implemented
                 public void messageReceived(String message) {
@@ -503,6 +508,7 @@ public class CameraService extends Service implements ConnectChecker,
                 KeyStore keyStore = KeyStore.getInstance("PKCS12");
                 FileInputStream caFile = new FileInputStream(cert_file);
                 keyStore.load(caFile, cert_password.toCharArray());
+                caFile.close();
 
                 TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
                 trustManagerFactory.init(keyStore);
@@ -606,6 +612,7 @@ public class CameraService extends Service implements ConnectChecker,
         audio_codec = preferences.getString("audio_codec", "AAC");
         adaptive_bitrate = preferences.getBoolean("adaptive_bitrate", true);
         uid = preferences.getString("uid", "OpenTAK-ICU-" + UUID.randomUUID().toString());
+
         getResolution();
         prepareEncoders();
 
@@ -737,8 +744,11 @@ public class CameraService extends Service implements ConnectChecker,
         Log.d(LOGTAG, "stopStream");
         if (genericCamera2.isStreaming())
             genericCamera2.stopStream();
-        if (tcpClient != null)
-            tcpClient.stopClient();
+
+        if (tcpClient != null) {
+            executor.execute(() -> tcpClient.stopClient());
+        }
+
         stopRecording();
         sensorManager.unregisterListener(this, magnetometer);
         sensorManager.unregisterListener(this, accelerometer);
@@ -811,7 +821,9 @@ public class CameraService extends Service implements ConnectChecker,
                 Device device = new Device(rotationInDegrees,0);
                 Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
 
-                Detail detail = new Detail(contact, __video, device, sensor);
+                Takv takv = new Takv(getApplicationContext());
+
+                Detail detail = new Detail(contact, __video, device, sensor, takv);
                 event.setDetail(detail);
 
                 XmlFactory xmlFactory = XmlFactory.builder()
@@ -849,7 +861,8 @@ public class CameraService extends Service implements ConnectChecker,
             executor.execute(() -> {
                 try {
                     Response response = okHttpClient.newCall(request).execute();
-                    Log.d(LOGTAG, "Posted video: " + response.message());
+                    Log.d(LOGTAG, "Posted video: " + response.message() + " " + response.code());
+                    Log.d(LOGTAG, response.toString());
                 } catch (IOException e) {
                     Log.e(LOGTAG, "Failed to post video stream: " + e.getMessage());
                 }

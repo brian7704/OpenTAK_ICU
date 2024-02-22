@@ -5,12 +5,14 @@ public class Detail {
     __Video __video;
     Device device;
     Sensor sensor;
+    Takv takv;
 
-    public Detail(Contact contact, __Video __video, Device device, Sensor sensor) {
+    public Detail(Contact contact, __Video __video, Device device, Sensor sensor, Takv takv) {
         this.contact = contact;
         this.__video = __video;
         this.device = device;
         this.sensor = sensor;
+        this.takv = takv;
     }
 
     public Contact getContact() {
@@ -43,6 +45,14 @@ public class Detail {
 
     public void setSensor(Sensor sensor) {
         this.sensor = sensor;
+    }
+
+    public Takv getTakv() {
+        return takv;
+    }
+
+    public void setTakv(Takv takv) {
+        this.takv = takv;
     }
 }
 

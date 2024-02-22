@@ -55,7 +55,7 @@
         <SwitchPreference
             android:defaultValue="true"
             android:key="self_signed_cert"
-            android:title="Server uses Self-Signed Certificate"
+            android:title="@string/self_signed_cert"
             app:summary=""
             android:dependency="stream_video" />
         <Preference
