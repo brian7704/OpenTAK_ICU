@@ -141,7 +141,6 @@ public class CameraService extends Service implements ConnectChecker,
 
     private boolean send_cot = false;
     private String atak_address;
-    private int atak_port = 8088;
 
     private SensorManager sensorManager;
     private android.hardware.Sensor magnetometer;
@@ -599,6 +598,7 @@ public class CameraService extends Service implements ConnectChecker,
         password = preferences.getString("password", "password");
         cert_file = preferences.getString("certificate", null);
         cert_password = preferences.getString("certificate_password", "atakatak");
+        atak_address = preferences.getString("atak_address", address);
         Log.d(LOGTAG, "Got cert: " + cert_file);
         samplerate = Integer.parseInt(preferences.getString("samplerate", "44100"));
         stereo = preferences.getBoolean("stereo", true);
@@ -855,7 +855,7 @@ public class CameraService extends Service implements ConnectChecker,
 
             RequestBody requestBody = RequestBody.create(xmlMapper.writeValueAsString(VideoConnections).getBytes());
             Request request = new Request.Builder()
-                    .url("http://" + address + ":8080/Marti/vcm")
+                    .url("http://" + atak_address + ":8080/Marti/vcm")
                     .post(requestBody)
                     .build();
             executor.execute(() -> {
