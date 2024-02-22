@@ -127,4 +127,7 @@
     <string name="atak_auth">Enable ATAK Authentication</string>
     <string name="atak_ssl">Connect to ATAK via SSL</string>
     <string name="atak_ssl_summary">Disable for TCP</string>
+    <string name="video_preferences">Video Preferences</string>
+    <string name="stream_preferences">Streaming Settings</string>
+    <string name="audio_preferences">Audio Settings</string>
 </resources>

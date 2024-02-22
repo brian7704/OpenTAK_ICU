@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory android:title="Audio Settings">
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="enable_audio"
+            android:title="@string/enable_audio" />
+        <EditTextPreference
+            android:defaultValue="128"
+            android:key="audio_bitrate"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/audio_bitrate"
+            android:dependency="enable_audio" />
+        <EditTextPreference
+            android:defaultValue="44100"
+            android:key="samplerate"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/samplerate"
+            android:dependency="enable_audio" />
+        <ListPreference
+            android:key="audio_codec"
+            android:title="@string/codec"
+            android:entries="@array/audio_codecs"
+            android:entryValues="@array/audio_codecs" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="stereo"
+            android:title="Stereo"
+            app:summary="Disable for mono"
+            android:dependency="enable_audio" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="echo_cancel"
+            android:title="@string/echo_canceler"
+            android:dependency="enable_audio" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="noise_reduction"
+            android:title="@string/noise_suppressor"
+            android:dependency="enable_audio" />
+    </PreferenceCategory>
+</PreferenceScreen>
