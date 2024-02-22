@@ -10,6 +10,14 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.lifecycle.MutableLiveData;
 import androidx.preference.PreferenceManager;
+import io.opentakserver.opentakicu.cot.ConnectionEntry;
+import io.opentakserver.opentakicu.cot.Contact;
+import io.opentakserver.opentakicu.cot.Detail;
+import io.opentakserver.opentakicu.cot.Device;
+import io.opentakserver.opentakicu.cot.event;
+import io.opentakserver.opentakicu.cot.Point;
+import io.opentakserver.opentakicu.cot.Sensor;
+import io.opentakserver.opentakicu.cot.__Video;
 import io.opentakserver.opentakicu.utils.PathUtils;
 import kotlin.NotImplementedError;
 
@@ -41,6 +49,10 @@ import android.util.Size;
 import android.view.MotionEvent;
 import android.widget.Toast;
 
+import com.ctc.wstx.stax.WstxInputFactory;
+import com.ctc.wstx.stax.WstxOutputFactory;
+import com.fasterxml.jackson.dataformat.xml.XmlFactory;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.pedro.common.AudioCodec;
 import com.pedro.common.ConnectChecker;
 import com.pedro.common.VideoCodec;
@@ -62,6 +74,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -110,6 +123,7 @@ public class CameraService extends Service implements ConnectChecker,
     private int audio_bitrate;
     private String audio_codec;
     private String codec;
+    private String uid;
 
     private boolean exiting = false;
     private final IBinder binder = new LocalBinder();
@@ -195,14 +209,13 @@ public class CameraService extends Service implements ConnectChecker,
         }
 
         executor.execute(() -> {
-            tcpClient = new TcpClient(new TcpClient.OnMessageReceived() {
+            tcpClient = new TcpClient(address, 8088, new TcpClient.OnMessageReceived() {
                 @Override
                 //here the messageReceived method is implemented
                 public void messageReceived(String message) {
                     Log.d(LOGTAG, message);
                 }
             });
-            tcpClient.run();
         });
 
         _locListener = new ICULocationListener();
@@ -501,6 +514,7 @@ public class CameraService extends Service implements ConnectChecker,
         audio_bitrate = Integer.parseInt(preferences.getString("audio_bitrate", "128"));
         audio_codec = preferences.getString("audio_codec", "AAC");
         adaptive_bitrate = preferences.getBoolean("adaptive_bitrate", true);
+        uid = preferences.getString("uid", "OpenTAK-ICU-" + UUID.randomUUID().toString());
         getResolution();
         prepareEncoders();
 
@@ -611,6 +625,7 @@ public class CameraService extends Service implements ConnectChecker,
                         return;
                     }
                     _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
+                    executor.execute(() -> tcpClient.run());
 
                     showNotification(getString(R.string.stream_in_progress));
                 }
@@ -627,6 +642,8 @@ public class CameraService extends Service implements ConnectChecker,
         Log.d(LOGTAG, "stopStream");
         if (genericCamera2.isStreaming())
             genericCamera2.stopStream();
+        if (tcpClient != null)
+            tcpClient.stopClient();
         stopRecording();
 
         _locManager.removeUpdates(_locListener);
@@ -684,6 +701,35 @@ public class CameraService extends Service implements ConnectChecker,
             Log.d(LOGTAG, "onLocationChanged");
             try {
                 Log.d(LOGTAG, location.toString());
+                event event = new event();
+                event.setUid(uid);
+
+                Point point = new Point(location.getLatitude(), location.getLongitude(), location.getAltitude());
+                event.setPoint(point);
+
+                Contact contact = new Contact(path);
+
+                ConnectionEntry connectionEntry = new ConnectionEntry(address, path, uid, port, path, protocol);
+                String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port)).concat("/").concat(path);
+                __Video __video = new __Video(url, uid, connectionEntry);
+
+                Device device = new Device(0,0);
+                Sensor sensor = new Sensor();
+
+                Detail detail = new Detail(contact, __video, device, sensor);
+                event.setDetail(detail);
+
+                XmlFactory xmlFactory = XmlFactory.builder()
+                        .xmlInputFactory(new WstxInputFactory())
+                        .xmlOutputFactory(new WstxOutputFactory())
+                        .build();
+
+                XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
+                String cot = xmlMapper.writeValueAsString(event);
+                if (tcpClient != null)
+                    tcpClient.sendMessage(cot);
+                Log.d(LOGTAG, cot);
+
             } catch (Exception e) {
                 Log.e(LOGTAG, "Failed to send location to traccar: " + e.getLocalizedMessage());
             }

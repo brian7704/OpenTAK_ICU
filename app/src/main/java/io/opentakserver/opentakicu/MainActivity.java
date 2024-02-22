@@ -34,6 +34,7 @@ import androidx.preference.PreferenceManager;
 import com.pedro.library.view.OpenGlView;
 
 import java.util.ArrayList;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity
         implements Button.OnClickListener, SurfaceHolder.Callback, View.OnTouchListener {
@@ -92,6 +93,10 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         pictureButton = findViewById(R.id.pictureButton);
         pictureButton.setOnClickListener(this);
+
+        String uid = pref.getString("uid", null);
+        if (uid == null)
+            pref.edit().putString("uid", "OpenTAK-ICU-" + UUID.randomUUID().toString()).apply();
 
         permissions();
 

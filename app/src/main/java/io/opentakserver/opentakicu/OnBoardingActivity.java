@@ -134,11 +134,6 @@ public class OnBoardingActivity extends AppIntro {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        boolean backEnabled = false;
-
-        Intent intent = getIntent();
-        if(intent != null)
-            backEnabled = intent.getBooleanExtra(ENABLE_BACK_BUTTON, false);
 
         addSlide(CustomLayout.createInstance(getString(R.string.welcome_to_open_tak_icu),
                 getText(R.string.app_intro_welcome_msg),

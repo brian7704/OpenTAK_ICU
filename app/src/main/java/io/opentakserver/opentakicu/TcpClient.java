@@ -32,7 +32,9 @@ public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeList
     /**
      * Constructor of the class. OnMessagedReceived listens for the messages received from server
      */
-    public TcpClient(OnMessageReceived listener) {
+    public TcpClient(String serverAddress, int port, OnMessageReceived listener) {
+        this.serverAddress = serverAddress;
+        this.port = port;
         mMessageListener = listener;
     }
 
@@ -60,7 +62,6 @@ public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeList
      * Close the connection and release the members
      */
     public void stopClient() {
-
         mRun = false;
 
         if (mBufferOut != null) {
@@ -75,11 +76,9 @@ public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeList
     }
 
     public void run() {
-
         mRun = true;
 
         try {
-            //here you must put your computer's IP address.
             InetAddress serverAddr = InetAddress.getByName(serverAddress);
 
             Log.d("TCP Client", "C: Connecting...");
