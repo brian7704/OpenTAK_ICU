@@ -288,7 +288,6 @@ public class MainActivity extends AppCompatActivity
             camera_service.setView(openGlView);
             camera_service.startPreview();
         }
-
     }
 
     @Override

@@ -62,6 +62,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -118,6 +120,9 @@ public class CameraService extends Service implements ConnectChecker,
 
     private LocationListener _locListener;
     private LocationManager _locManager;
+    private TcpClient tcpClient;
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    Handler handler = new Handler(Looper.getMainLooper());
 
     final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
@@ -142,9 +147,6 @@ public class CameraService extends Service implements ConnectChecker,
             }
         }
     };
-
-    public CameraService() {
-    }
 
     @Override
     public void onCreate() {
@@ -191,6 +193,17 @@ public class CameraService extends Service implements ConnectChecker,
         } else {
             registerReceiver(receiver, intentFilter);
         }
+
+        executor.execute(() -> {
+            tcpClient = new TcpClient(new TcpClient.OnMessageReceived() {
+                @Override
+                //here the messageReceived method is implemented
+                public void messageReceived(String message) {
+                    Log.d(LOGTAG, message);
+                }
+            });
+            tcpClient.run();
+        });
 
         _locListener = new ICULocationListener();
         _locManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
@@ -616,7 +629,7 @@ public class CameraService extends Service implements ConnectChecker,
             genericCamera2.stopStream();
         stopRecording();
 
-        //showNotification(getString(R.string.ready_to_stream));
+        _locManager.removeUpdates(_locListener);
     }
 
     public void take_photo() {

@@ -15,9 +15,10 @@
             android:title="@string/atak_address"
             android:dependency="send_cot" />
         <EditTextPreference
-            android:key="atak_address"
+            android:key="atak_port"
             android:selectAllOnFocus="true"
             android:singleLine="true"
+            android:defaultValue="8088"
             android:title="@string/atak_port"
             android:dependency="send_cot" />
         <SwitchPreference
