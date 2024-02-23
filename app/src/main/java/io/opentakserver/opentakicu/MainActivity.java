@@ -11,6 +11,11 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -21,6 +26,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -47,12 +53,17 @@ public class MainActivity extends AppCompatActivity
     private FloatingActionButton bStartStop;
 
     private TextView tvBitrate;
+    private TextView tvLocationFix;
+    private TextView tvStreamPath;
+    private TextView tvRecording;
+    private TextView tvTakServer;
     private FloatingActionButton pictureButton;
     private FloatingActionButton flashlight;
     private View whiteOverlay;
 
     private boolean service_bound = false;
     private CameraService camera_service;
+    private long last_fix_time = 0;
 
     final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
@@ -68,21 +79,60 @@ public class MainActivity extends AppCompatActivity
                     bStartStop.setImageResource(R.drawable.stop);
                     lockScreenOrientation();
                 }
-            } else if (action != null && (action.equals(CameraService.STOP_STREAM) || action.equals(CameraService.AUTH_ERROR))) {
+                if (pref.getBoolean("record", false)) {
+                    tvRecording.setText(R.string.yes);
+                    tvRecording.setTextColor(Color.GREEN);
+                }
+            } else if (action != null && (action.equals(CameraService.STOP_STREAM) || action.equals(CameraService.AUTH_ERROR) || action.equals(CameraService.CONNECTION_FAILED))) {
                 bStartStop.setImageResource(R.drawable.ic_record);
-                if (camera_service != null)
-                    camera_service.stopStream();
                 unbindService(mConnection);
                 service_bound = false;
                 unlockScreenOrientation();
+                if (pref.getBoolean("record", false)) {
+                    tvRecording.setText(R.string.no);
+                    tvRecording.setTextColor(Color.RED);
+                }
+
+                setStatusState();
             } else if (action != null && action.equals(CameraService.TOOK_PICTURE)) {
                 MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.INVISIBLE));
             } else if (action != null && action.equals(CameraService.NEW_BITRATE)) {
                 long bitrate = intent.getLongExtra(CameraService.NEW_BITRATE, 0) / 1000;
                 tvBitrate.setText(bitrate + "kb/s");
+            } else if (action != null && action.equals(CameraService.LOCATION_CHANGE)) {
+                last_fix_time = System.currentTimeMillis();
+                tvLocationFix.setText(R.string.yes);
+                tvLocationFix.setTextColor(Color.GREEN);
+            } else if (action != null && action.equals(TcpClient.TAK_SERVER_CONNECTED)) {
+                tvTakServer.setText(R.string.connected);
+                tvTakServer.setTextColor(Color.GREEN);
+            } else if (action != null && action.equals(TcpClient.TAK_SERVER_DISCONNECTED)) {
+                tvTakServer.setText(R.string.disconnected);
+                tvTakServer.setTextColor(Color.RED);
             }
         }
     };
+
+    private ConnectivityManager.NetworkCallback networkCallback = new ConnectivityManager.NetworkCallback() {
+        @Override
+        public void onAvailable(@NonNull Network network) {
+            super.onAvailable(network);
+        }
+
+        @Override
+        public void onLost(@NonNull Network network) {
+            super.onLost(network);
+            camera_service.stopStream(getString(R.string.network_lost), null);
+            Toast.makeText(getApplicationContext(), "Network lost, stream stopping", Toast.LENGTH_LONG).show();
+        }
+
+        @Override
+        public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+            super.onCapabilitiesChanged(network, networkCapabilities);
+            final boolean unmetered = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        }
+    };
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,7 +164,14 @@ public class MainActivity extends AppCompatActivity
             return;
         }
 
-        tvBitrate = findViewById(R.id.tv_bitrate);
+        tvBitrate = findViewById(R.id.bitrate_value);
+        tvLocationFix = findViewById(R.id.location_fix_status);
+        tvStreamPath = findViewById(R.id.stream_path_name);
+        tvRecording = findViewById(R.id.recording_status);
+        tvTakServer = findViewById(R.id.atak_connection_status);
+
+        setStatusState();
+
         bStartStop = findViewById(R.id.b_start_stop);
         bStartStop.setOnClickListener(this);
         FloatingActionButton switchCamera = findViewById(R.id.switch_camera);
@@ -144,13 +201,52 @@ public class MainActivity extends AppCompatActivity
         intentFilter.addAction(CameraService.START_STREAM);
         intentFilter.addAction(CameraService.STOP_STREAM);
         intentFilter.addAction(CameraService.AUTH_ERROR);
+        intentFilter.addAction(CameraService.CONNECTION_FAILED);
         intentFilter.addAction(CameraService.TOOK_PICTURE);
         intentFilter.addAction(CameraService.NEW_BITRATE);
+        intentFilter.addAction(CameraService.LOCATION_CHANGE);
+        intentFilter.addAction(TcpClient.TAK_SERVER_CONNECTED);
+        intentFilter.addAction(TcpClient.TAK_SERVER_DISCONNECTED);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(receiver, intentFilter);
+        }
+
+        NetworkRequest networkRequest = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .build();
+
+        ConnectivityManager connectivityManager = getSystemService(ConnectivityManager.class);
+        connectivityManager.requestNetwork(networkRequest, networkCallback);
+
+    }
+
+    private void setStatusState() {
+        if (pref.getBoolean("send_cot", false)) {
+            tvLocationFix.setText(R.string.not_streaming);
+            tvLocationFix.setTextColor(Color.YELLOW);
+            tvTakServer.setText(R.string.not_streaming);
+            tvTakServer.setTextColor(Color.YELLOW);
+        } else {
+            tvLocationFix.setText(R.string.disabled);
+            tvLocationFix.setTextColor(Color.YELLOW);
+            tvTakServer.setText(R.string.disabled);
+            tvTakServer.setTextColor(Color.YELLOW);
+        }
+
+        tvStreamPath.setText(pref.getString("path", ""));
+        tvBitrate.setText(pref.getString("bitrate", "3000") + "kb/s");
+
+        if (pref.getBoolean("record", false)) {
+            tvRecording.setText(R.string.not_streaming);
+            tvRecording.setTextColor(Color.YELLOW);
+        } else {
+            tvRecording.setText(R.string.disabled);
+            tvRecording.setTextColor(Color.YELLOW);
         }
     }
 
@@ -176,6 +272,10 @@ public class MainActivity extends AppCompatActivity
             Log.d(LOGTAG, "onServiceConnected");
             service_bound = true;
             bStartStop.setImageResource(R.drawable.stop);
+            tvLocationFix.setText(R.string.no);
+            tvLocationFix.setTextColor(Color.RED);
+            tvTakServer.setText(R.string.no);
+            tvTakServer.setTextColor(Color.RED);
             camera_service.startStream();
         }
 
@@ -242,12 +342,17 @@ public class MainActivity extends AppCompatActivity
                 bindService(new Intent(this, CameraService.class), mConnection, Context.BIND_IMPORTANT);
                 bStartStop.setImageResource(R.drawable.stop);
                 lockScreenOrientation();
+                if (pref.getBoolean("record", false)) {
+                    tvRecording.setText(R.string.yes);
+                    tvRecording.setTextColor(Color.GREEN);
+                }
             } else {
                 bStartStop.setImageResource(R.drawable.ic_record);
-                camera_service.stopStream();
+                camera_service.stopStream(null, null);
                 unbindService(mConnection);
                 service_bound = false;
                 unlockScreenOrientation();
+                setStatusState();
             }
         } else if (id == R.id.switch_camera) {
             camera_service.switchCamera();

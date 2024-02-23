@@ -34,6 +34,7 @@ public class OnBoardingActivity extends AppIntro {
     private static final String LOGTAG = "OnBoardingActivity";
     private static final String WELCOME_SLIDE = "welcome_slide";
     private static final String PERMISSIONS_SLIDE = "permissions_slide";
+    private static final String NETWORK_PERMISSIONS_SLIDE = "network_permissions_slide";
     private static final String BACKGROUND_LOCATION_SLIDE = "background_location_slide";
     private static final String STORAGE_SLIDE = "storage_slide";
     private static final String FINALIZE_SLIDE = "finalize_slide";
@@ -135,16 +136,23 @@ public class OnBoardingActivity extends AppIntro {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Welcome slide
         addSlide(CustomLayout.createInstance(getString(R.string.welcome_to_open_tak_icu),
                 getText(R.string.app_intro_welcome_msg),
                 R.mipmap.ic_launcher, true, WELCOME_SLIDE));
 
+
+        // Basic permissions slide
         addSlide(CustomLayout.createInstance(getString(R.string.permissions),
                 getText(R.string.permissions_slide_description),
                 R.mipmap.ic_launcher, true, PERMISSIONS_SLIDE));
 
+        // Network permission slide
+        //addSlide(CustomLayout.createInstance("Network State", "Network state perms", R.mipmap.ic_launcher, true, NETWORK_PERMISSIONS_SLIDE));
+
         int slide_number = 3;
 
+        // For android 9 or less request storage permission to save photos and video recordings
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             addSlide(CustomLayout.createInstance(getString(R.string.storage_slide_title), getString(R.string.storage_slide_description), R.mipmap.ic_launcher, true, STORAGE_SLIDE));
             String[] storage_permission = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
@@ -152,6 +160,7 @@ public class OnBoardingActivity extends AppIntro {
             slide_number++;
         }
 
+        // For android 10 or later ask for background location for sending CoTs
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             addSlide(CustomLayout.createInstance(getString(R.string.background_location_permission),
                     getText(R.string.background_location_permissions_slide_description),
@@ -161,6 +170,7 @@ public class OnBoardingActivity extends AppIntro {
             askForPermissions(background_location_permission, slide_number, true);
         }
 
+        // Finished slide
         addSlide(CustomLayout.createInstance(getString(R.string.finished),
                 getText(R.string.finished_onboarding),
                 R.mipmap.ic_launcher, true, FINALIZE_SLIDE));
@@ -175,6 +185,11 @@ public class OnBoardingActivity extends AppIntro {
         }
 
         askForPermissions(permissions.toArray(new String[0]), 2, true);
+
+        /*permissions.clear();
+        permissions.add(Manifest.permission.WRITE_SETTINGS);
+        permissions.add(Manifest.permission.CHANGE_NETWORK_STATE);
+        askForPermissions(permissions.toArray(new String[0]), 3, true);*/
 
         showStatusBar(true);
         setSkipButtonEnabled(false);

@@ -103,8 +103,10 @@ public class CameraService extends Service implements ConnectChecker,
     static final String STOP_STREAM = "stop_stream";
     static final String EXIT_APP = "exit_app";
     static final String AUTH_ERROR = "auth_error";
+    static final String CONNECTION_FAILED = "connection_failed";
     static final String TOOK_PICTURE = "took_picture";
     static final String NEW_BITRATE = "new_bitrate";
+    static final String LOCATION_CHANGE = "location_change";
 
     private NotificationManager notificationManager;
     private static final String LOGTAG = "CameraService";
@@ -144,6 +146,7 @@ public class CameraService extends Service implements ConnectChecker,
 
     private boolean send_cot = false;
     private String atak_address;
+    private long last_fix_time = 0;
 
     private SensorManager sensorManager;
     private android.hardware.Sensor magnetometer;
@@ -165,6 +168,7 @@ public class CameraService extends Service implements ConnectChecker,
     private LocationManager _locManager;
     private OkHttpClient okHttpClient = new OkHttpClient();
     private TcpClient tcpClient;
+    private Thread tcpClientThread;
     ExecutorService executor = Executors.newSingleThreadExecutor();
 
     final BroadcastReceiver receiver = new BroadcastReceiver() {
@@ -179,11 +183,11 @@ public class CameraService extends Service implements ConnectChecker,
                         startStream();
                         break;
                     case STOP_STREAM:
-                        stopStream();
+                        stopStream(null, null);
                         break;
                     case EXIT_APP:
                         exiting = true;
-                        stopStream();
+                        stopStream(null, null);
                         stopSelf();
                         break;
                 }
@@ -236,16 +240,6 @@ public class CameraService extends Service implements ConnectChecker,
         } else {
             registerReceiver(receiver, intentFilter);
         }
-
-        executor.execute(() -> {
-            tcpClient = new TcpClient(getApplicationContext(), address, port, new TcpClient.OnMessageReceived() {
-                @Override
-                //here the messageReceived method is implemented
-                public void messageReceived(String message) {
-                    Log.d(LOGTAG, message);
-                }
-            });
-        });
 
         _locListener = new ICULocationListener();
         _locManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
@@ -450,8 +444,6 @@ public class CameraService extends Service implements ConnectChecker,
                 if (rotationInDegrees < 0.0f) {
                     rotationInDegrees += 360.0f;
                 }
-
-                Log.d(LOGTAG, "Azimuth " + rotationInDegrees);
             }
         }
     }
@@ -476,9 +468,7 @@ public class CameraService extends Service implements ConnectChecker,
 
     @Override
     public void onAuthError() {
-        showNotification(getString(R.string.auth_error));
-        Intent intent = new Intent(AUTH_ERROR);
-        getApplicationContext().sendBroadcast(intent);
+        stopStream(getString(R.string.auth_error), AUTH_ERROR);
     }
 
     @Override
@@ -489,7 +479,7 @@ public class CameraService extends Service implements ConnectChecker,
     @Override
     public void onConnectionFailed(@NonNull String reason) {
         Log.e(LOGTAG, "Connection failed: ".concat(reason));
-        showNotification(getString(R.string.connection_failed) + ": " + reason);
+        stopStream(getString(R.string.connection_failed) + ": " + reason, CONNECTION_FAILED);
     }
 
     @Override
@@ -514,7 +504,7 @@ public class CameraService extends Service implements ConnectChecker,
 
     @Override
     public void onDisconnect() {
-        showNotification(getString(R.string.ready_to_stream));
+
     }
 
     @Override
@@ -709,7 +699,6 @@ public class CameraService extends Service implements ConnectChecker,
         Log.d(LOGTAG, "Stop recording");
         if (genericCamera2.isRecording()) {
             genericCamera2.stopRecord();
-            //unlockScreenOrientation();
             PathUtils.updateGallery(this, folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
             Toast.makeText(this,
                     "file ".concat(currentDateAndTime).concat(".mp4 saved in ").concat(folder.getAbsolutePath()),
@@ -753,7 +742,10 @@ public class CameraService extends Service implements ConnectChecker,
                     }
                     _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
                     postVideoStream();
-                    executor.execute(() -> tcpClient.run());
+                    Log.d(LOGTAG, "Starting Tcp Thread");
+                    tcpClient = new TcpClient(getApplicationContext(), address, port, message -> Log.d(LOGTAG, message));
+                    tcpClientThread = new Thread(tcpClient);
+                    tcpClientThread.start();
 
                     sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
                     sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
@@ -769,13 +761,15 @@ public class CameraService extends Service implements ConnectChecker,
         }
     }
 
-    public void stopStream() {
-        Log.d(LOGTAG, "stopStream");
+    public void stopStream(String error, String broadcastIntent) {
+        Log.d(LOGTAG, "stopStream " + error);
         if (genericCamera2.isStreaming())
             genericCamera2.stopStream();
 
         if (tcpClient != null) {
-            executor.execute(() -> tcpClient.stopClient());
+            Log.d(LOGTAG, "Stopping TcpClient");
+            tcpClient.setmRun(false);
+            tcpClientThread.interrupt();
         }
 
         stopRecording();
@@ -783,6 +777,14 @@ public class CameraService extends Service implements ConnectChecker,
         sensorManager.unregisterListener(this, accelerometer);
 
         _locManager.removeUpdates(_locListener);
+
+        // Only show the "Ready to Stream" message if there is no error
+        if (error != null && broadcastIntent != null) {
+            showNotification(error);
+            getApplicationContext().sendBroadcast(new Intent(broadcastIntent));
+        } else {
+            showNotification(getString(R.string.ready_to_stream));
+        }
     }
 
     public void take_photo() {
@@ -836,6 +838,9 @@ public class CameraService extends Service implements ConnectChecker,
         public void onLocationChanged(@NonNull Location location) {
             Log.d(LOGTAG, "onLocationChanged");
             try {
+                last_fix_time = System.currentTimeMillis();
+                getApplicationContext().sendBroadcast(new Intent(LOCATION_CHANGE));
+
                 event event = new event();
                 event.setUid(uid);
 

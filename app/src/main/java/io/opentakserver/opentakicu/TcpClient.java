@@ -1,6 +1,7 @@
 package io.opentakserver.opentakicu;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.util.Log;
 
@@ -17,12 +18,14 @@ import io.opentakserver.opentakicu.cot.Cot;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.security.KeyStore;
 import java.util.UUID;
 
@@ -32,9 +35,11 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
-public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeListener {
+public class TcpClient extends Thread implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     public static final String TAG = TcpClient.class.getSimpleName();
+    public static final String TAK_SERVER_CONNECTED = "tak_server_connected";
+    public static final String TAK_SERVER_DISCONNECTED = "tak_server_disconnected";
 
     private SharedPreferences prefs;
 
@@ -55,16 +60,13 @@ public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeList
     private SSLSocket sslSocket;
     private Context context;
 
-    // message to send to the server
     private String mServerMessage;
-    // sends message received notifications
     private OnMessageReceived mMessageListener;
-    // while this is true, the server will continue running
-    private boolean mRun = false;
-    // used to send messages
+    public boolean mRun = false;
     private PrintWriter mBufferOut;
-    // used to read messages from the server
     private BufferedReader mBufferIn;
+
+    private boolean connected = false;
 
     /**
      * Constructor of the class. OnMessagedReceived listens for the messages received from server
@@ -85,13 +87,10 @@ public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeList
      * @param message text entered by client
      */
     public void sendMessage(final String message) {
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                if (mBufferOut != null) {
-                    mBufferOut.println(message);
-                    mBufferOut.flush();
-                }
+        Runnable runnable = () -> {
+            if (mBufferOut != null) {
+                mBufferOut.println(message);
+                mBufferOut.flush();
             }
         };
         Thread thread = new Thread(runnable);
@@ -109,7 +108,11 @@ public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeList
 
             try {
                 mBufferOut.close();
-            } catch (Exception e) {
+                if (sslSocket != null)
+                    sslSocket.close();
+                if (socket != null)
+                    socket.close();
+            } catch (IOException e) {
                 Log.e(TAG, "Failed to close buffer", e);
             }
         }
@@ -119,6 +122,10 @@ public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeList
         mBufferIn = null;
         mBufferOut = null;
         mServerMessage = null;
+        socket = null;
+        sslSocket = null;
+        Log.d(TAG, "Sending Broadcast " + TAK_SERVER_DISCONNECTED);
+        context.sendBroadcast(new Intent(TAK_SERVER_DISCONNECTED).setPackage(context.getPackageName()));
     }
 
     public void run() {
@@ -156,18 +163,23 @@ public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeList
 
                     SSLSocketFactory factory = sslContext.getSocketFactory();
                     sslSocket = (SSLSocket) factory.createSocket(serverAddr, port);
+                    sslSocket.setSoTimeout(1000);
                 } else {
                     Log.d(TAG, "Connecting vi SSL to a server with a signed cert");
                     SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
                     sslSocket = (SSLSocket) factory.createSocket(serverAddr, port);
+                    sslSocket.setSoTimeout(1000);
                 }
                 mBufferOut = new PrintWriter(new BufferedWriter(new OutputStreamWriter(sslSocket.getOutputStream())), true);
                 mBufferIn = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
+                context.sendBroadcast(new Intent(TAK_SERVER_CONNECTED).setPackage(context.getPackageName()));
             } else {
                 Log.d(TAG, "Connecting via TCP");
                 socket = new Socket(serverAddr, port);
+                socket.setSoTimeout(1000);
                 mBufferOut = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
                 mBufferIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                context.sendBroadcast(new Intent(TAK_SERVER_CONNECTED).setPackage(context.getPackageName()));
             }
 
             if (atak_auth) {
@@ -184,32 +196,34 @@ public class TcpClient implements SharedPreferences.OnSharedPreferenceChangeList
             }
 
             try {
-
                 //in this while the client listens for the messages sent by the server
                 while (mRun) {
                     try {
                         mServerMessage = mBufferIn.readLine();
                         if (mServerMessage != null && mMessageListener != null) {
-                            //call the method messageReceived from MyActivity class
                             mMessageListener.messageReceived(mServerMessage);
                         }
                     } catch (SocketException e) {
                         Log.e(TAG, "Socket closed");
                         stopClient();
-                    }
+                    } catch (SocketTimeoutException e) {}
                 }
+                stopClient();
             } catch (Exception e) {
                 Log.e(TAG, "Error", e);
-            } finally {
-                if (socket != null)
-                    socket.close();
-                if (sslSocket != null)
-                    sslSocket.close();
+                stopClient();
             }
 
         } catch (Exception e) {
             Log.e(TAG, "Error", e);
+            stopClient();
         }
+    }
+
+    public void setmRun(boolean mRun) {
+        if (!mRun)
+            Log.d(TAG, "Stopping thread");
+        this.mRun = mRun;
     }
 
     private void getSettings() {

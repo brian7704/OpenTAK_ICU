@@ -80,7 +80,7 @@
     <string name="permissions_slide_description">Please grant the necessary permissions</string>
     <string name="background_location_permission">Background Location Permission</string>
     <string name="background_location_permissions_slide_description">On the next screen please choose Allow All The Time</string>
-    <string name="tak_server">Server</string>
+    <string name="tak_server">TAK Server</string>
     <string name="server_info">Server Info</string>
     <string name="finished_onboarding">Setup is complete!</string>
     <string name="finished">Finished</string>
@@ -134,4 +134,15 @@
     <string name="test_certificates">Test Certificates</string>
     <string name="test_client_cert">Test Client Certificate</string>
     <string name="test_trust_store">Test Trust Store Certificate</string>
+    <string name="location_fix">Location Fix</string>
+    <string name="stream_path">Stream Path</string>
+    <string name="bitrate">Bitrate</string>
+    <string name="recording">Recording</string>
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="no">No</string>
+    <string name="disabled">Disabled</string>
+    <string name="yes">Yes</string>
+    <string name="network_lost">Network Connectivity Lost</string>
+    <string name="not_streaming">Not Streaming</string>
 </resources>
