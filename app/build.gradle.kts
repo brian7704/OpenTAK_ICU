@@ -1,5 +1,16 @@
+import java.io.ByteArrayOutputStream
+
 plugins {
     id("com.android.application")
+}
+
+val gitDescribe: String by lazy {
+    val stdout = ByteArrayOutputStream()
+    rootProject.exec {
+        commandLine("git", "describe", "--tags", "--always")
+        standardOutput = stdout
+    }
+    stdout.toString().trim()
 }
 
 android {
@@ -11,7 +22,7 @@ android {
         minSdk = 24
         targetSdk = 34
         versionCode = 1
-        versionName = "1.1.0"
+        versionName = gitDescribe
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,6 +66,7 @@ dependencies {
     implementation("com.fasterxml.woodstox:woodstox-core:6.5.1")
     implementation("javax.xml.stream:stax-api:1.0-2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.sealwu:kscript-tools:1.0.2")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
