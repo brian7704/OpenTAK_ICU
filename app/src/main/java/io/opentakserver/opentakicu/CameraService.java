@@ -1,5 +1,6 @@
 package io.opentakserver.opentakicu;
 
+import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -58,6 +59,8 @@ import android.util.Log;
 import android.util.Size;
 import android.util.SizeF;
 import android.view.MotionEvent;
+import android.view.Surface;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import com.ctc.wstx.stax.WstxInputFactory;
@@ -423,6 +426,32 @@ public class CameraService extends Service implements ConnectChecker,
                 SensorManager.getOrientation(rotationMatrix, orientationMatrix);
                 float rotationInRadians = orientationMatrix[0];
                 rotationInDegrees = Math.toDegrees(rotationInRadians);
+
+                WindowManager windowService = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+                int rotation =  windowService.getDefaultDisplay().getRotation();
+                int screen_orientation;
+                switch (rotation) {
+                    case Surface.ROTATION_90:
+                        screen_orientation = 90;
+                        break;
+                    case Surface.ROTATION_180:
+                        screen_orientation = -180;
+                        break;
+                    case Surface.ROTATION_270:
+                        screen_orientation = -90;
+                        break;
+                    default:
+                        screen_orientation = 0;
+                        break;
+                }
+
+                rotationInDegrees += screen_orientation;
+
+                if (rotationInDegrees < 0.0f) {
+                    rotationInDegrees += 360.0f;
+                }
+
+                Log.d(LOGTAG, "Azimuth " + rotationInDegrees);
             }
         }
     }
