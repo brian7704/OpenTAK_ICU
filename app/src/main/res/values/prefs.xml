@@ -32,5 +32,6 @@
     <string-array name="audio_codecs">
         <item>G711</item>
         <item>AAC</item>
+        <item>Opus</item>
     </string-array>
 </resources>

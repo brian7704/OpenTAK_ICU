@@ -87,14 +87,18 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
      * @param message text entered by client
      */
     public void sendMessage(final String message) {
-        Runnable runnable = () -> {
-            if (mBufferOut != null) {
-                mBufferOut.println(message);
-                mBufferOut.flush();
-            }
-        };
-        Thread thread = new Thread(runnable);
-        thread.start();
+        try {
+            Runnable runnable = () -> {
+                if (mBufferOut != null) {
+                    mBufferOut.println(message);
+                    mBufferOut.flush();
+                }
+            };
+            Thread thread = new Thread(runnable);
+            thread.start();
+        } catch (Exception e) {
+            Log.e(TAG ,"Error sending message", e);
+        }
     }
 
     /**

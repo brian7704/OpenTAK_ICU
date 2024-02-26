@@ -1,6 +1,5 @@
 package io.opentakserver.opentakicu;
 
-import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -72,7 +71,12 @@ import com.pedro.common.ConnectChecker;
 import com.pedro.common.VideoCodec;
 import com.pedro.encoder.input.video.CameraCallbacks;
 import com.pedro.encoder.input.video.CameraHelper;
+import com.pedro.encoder.utils.CodecUtil;
+import com.pedro.library.base.Camera2Base;
 import com.pedro.library.generic.GenericCamera2;
+import com.pedro.library.rtmp.RtmpCamera2;
+import com.pedro.library.rtsp.RtspCamera2;
+import com.pedro.library.srt.SrtCamera2;
 import com.pedro.library.util.BitrateAdapter;
 import com.pedro.library.view.OpenGlView;
 import com.pedro.rtsp.rtsp.Protocol;
@@ -114,7 +118,9 @@ public class CameraService extends Service implements ConnectChecker,
     private final int notifyId = 3425;
     private SharedPreferences preferences;
 
-    private GenericCamera2 genericCamera2;
+    private RtspCamera2 rtspCamera2;
+    private RtmpCamera2 rtmpCamera2;
+    private SrtCamera2 srtCamera2;
     private BitrateAdapter bitrateAdapter;
 
     private String protocol;
@@ -248,10 +254,10 @@ public class CameraService extends Service implements ConnectChecker,
         magnetometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_MAGNETIC_FIELD);
         accelerometer = sensorManager.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER);
 
-        genericCamera2.setCameraCallbacks(new CameraCallbacks() {
+        getCamera().setCameraCallbacks(new CameraCallbacks() {
             @Override
             public void onCameraChanged(@NonNull CameraHelper.Facing facing) {
-                CameraCharacteristics cameraCharacteristics = genericCamera2.getCameraCharacteristics();
+                CameraCharacteristics cameraCharacteristics = getCamera().getCameraCharacteristics();
                 float[] maxFocus = cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
                 SizeF size = cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
                 float w = size.getWidth();
@@ -320,7 +326,7 @@ public class CameraService extends Service implements ConnectChecker,
                 .setContentText(content);
 
         // Show start/stop stream button in notification
-        if (genericCamera2 != null && genericCamera2.isStreaming()) {
+        if (getCamera() != null && getCamera().isStreaming()) {
             notificationBuilder.addAction(stopStreamAction());
         } else {
             notificationBuilder.addAction(startStreamAction());
@@ -333,53 +339,49 @@ public class CameraService extends Service implements ConnectChecker,
         return notification;
     }
 
-    public GenericCamera2 getCamera() {
-        return genericCamera2;
-    }
-
     public void startPreview() {
-        if (!genericCamera2.isOnPreview()) {
+        if (!getCamera().isOnPreview()) {
             Log.d(LOGTAG, "Starting Preview");
-            genericCamera2.startPreview();
+            getCamera().startPreview();
         }
     }
 
     public void stopPreview() {
-        if (genericCamera2.isOnPreview()) {
+        if (getCamera().isOnPreview()) {
             Log.d(LOGTAG, "Stopping Preview");
-            genericCamera2.stopPreview();
+            getCamera().stopPreview();
         }
     }
 
     public void setView(OpenGlView openGlView) {
-        genericCamera2.replaceView(openGlView);
+        getCamera().replaceView(openGlView);
     }
 
     public void setView(Context context) {
-        genericCamera2.replaceView(context);
+        getCamera().replaceView(context);
     }
 
     public void toggleLantern() {
         try {
-            if (genericCamera2.isLanternSupported() && genericCamera2.isLanternEnabled())
-                genericCamera2.disableLantern();
-            else if (genericCamera2.isLanternSupported() && !genericCamera2.isLanternEnabled())
-                genericCamera2.enableLantern();
+            if (getCamera().isLanternSupported() && getCamera().isLanternEnabled())
+                getCamera().disableLantern();
+            else if (getCamera().isLanternSupported() && !getCamera().isLanternEnabled())
+                getCamera().enableLantern();
         } catch (Exception e) {
             Log.e(LOGTAG, "Failed to toggle lantern: " + e.getMessage());
         }
     }
 
     public void switchCamera() {
-        genericCamera2.switchCamera();
+        getCamera().switchCamera();
     }
 
     public void setZoom(MotionEvent motionEvent) {
-        genericCamera2.setZoom(motionEvent);
+        getCamera().setZoom(motionEvent);
     }
 
     public void tapToFocus(MotionEvent motionEvent) {
-        genericCamera2.tapToFocus(motionEvent);
+        getCamera().tapToFocus(motionEvent);
     }
 
     @Override
@@ -492,10 +494,10 @@ public class CameraService extends Service implements ConnectChecker,
         if (adaptive_bitrate) {
             Log.d(LOGTAG, "Setting adaptive bitrate");
             bitrateAdapter = new BitrateAdapter(bitrate -> {
-                genericCamera2.setVideoBitrateOnFly(bitrate);
+                getCamera().setVideoBitrateOnFly(bitrate);
                 Log.d(LOGTAG, "Set bitrate to ".concat(String.valueOf(bitrate)));
             });
-            bitrateAdapter.setMaxBitrate(genericCamera2.getBitrate());
+            bitrateAdapter.setMaxBitrate(getCamera().getBitrate());
         } else {
             Log.d(LOGTAG, "Not doing adaptive bitrate");
         }
@@ -511,7 +513,7 @@ public class CameraService extends Service implements ConnectChecker,
     public void onNewBitrate(final long bitrate) {
         if (bitrateAdapter != null) {
             Log.d(LOGTAG, "Set bitrate to " + bitrate);
-            bitrateAdapter.adaptBitrate(bitrate, genericCamera2.getStreamClient().hasCongestion());
+            bitrateAdapter.adaptBitrate(bitrate, getCamera().getStreamClient().hasCongestion());
             Intent intent = new Intent(NEW_BITRATE);
             intent.putExtra(NEW_BITRATE, bitrate);
             getApplicationContext().sendBroadcast(intent);
@@ -534,7 +536,10 @@ public class CameraService extends Service implements ConnectChecker,
                 SSLContext sslctx = SSLContext.getInstance("TLS");
                 sslctx.init(null, trustManagerFactory.getTrustManagers(), new SecureRandom());
 
-                genericCamera2.getStreamClient().addCertificates(trustManagerFactory.getTrustManagers());
+                if (rtspCamera2 != null)
+                    rtspCamera2.getStreamClient().addCertificates(trustManagerFactory.getTrustManagers());
+                else if (rtmpCamera2 != null)
+                    rtmpCamera2.getStreamClient().addCertificates(trustManagerFactory.getTrustManagers());
 
             } catch (Exception e) {
                 Log.e(LOGTAG, e.getMessage());
@@ -551,25 +556,31 @@ public class CameraService extends Service implements ConnectChecker,
         int width = resolution.getWidth();
         int height = resolution.getHeight();
 
+
+
         if (Objects.equals(codec, "H264"))
-            genericCamera2.setVideoCodec(VideoCodec.H264);
+            getCamera().setVideoCodec(VideoCodec.H264);
         else if (Objects.equals(codec, "H265"))
-            genericCamera2.setVideoCodec(VideoCodec.H265);
+            getCamera().setVideoCodec(VideoCodec.H265);
         else if (Objects.equals(codec, "AV1"))
-            genericCamera2.setVideoCodec(VideoCodec.AV1);
+            getCamera().setVideoCodec(VideoCodec.AV1);
 
         if (Objects.equals(audio_codec, "G711"))
             try {
-                genericCamera2.setAudioCodec(AudioCodec.G711);
+                getCamera().setAudioCodec(AudioCodec.G711);
                 Log.d(LOGTAG, "Set audio codec to G711");
             } catch (RuntimeException e) {
-                genericCamera2.setAudioCodec(AudioCodec.AAC);
+                getCamera().setAudioCodec(AudioCodec.AAC);
                 Log.d(LOGTAG, "Failed to set audio codec to G711, falling back to AAC: " + e.getMessage());
             }
-        else {
-            genericCamera2.setAudioCodec(AudioCodec.AAC);
+        else if (audio_codec.equals("AAC")) {
+            getCamera().setAudioCodec(AudioCodec.AAC);
             Log.d(LOGTAG, "Set audio codec to AAC");
+        } else {
+            getCamera().setAudioCodec(AudioCodec.OPUS);
+            Log.d(LOGTAG, "Set audio codec to Opus");
         }
+
 
         Log.d(LOGTAG, "Setting video bitrate to ".concat(String.valueOf(bitrate)));
         Log.d(LOGTAG, "Setting audio bitrate to ".concat(String.valueOf(audio_bitrate)));
@@ -577,12 +588,12 @@ public class CameraService extends Service implements ConnectChecker,
 
         addCert();
 
-        boolean prepareVideo = genericCamera2.prepareVideo(width, height, fps,
+        boolean prepareVideo = getCamera().prepareVideo(width, height, fps,
                 bitrate * 1024,
                 CameraHelper.getCameraOrientation(this));
 
 
-        boolean prepareAudio = genericCamera2.prepareAudio(
+        boolean prepareAudio = getCamera().prepareAudio(
                 audio_bitrate * 1024,
                 samplerate,
                 stereo,
@@ -591,9 +602,9 @@ public class CameraService extends Service implements ConnectChecker,
 
         if (!enable_audio) {
             Log.d(LOGTAG, "disabling audio");
-            genericCamera2.disableAudio();
+            getCamera().disableAudio();
         } else {
-            genericCamera2.enableAudio();
+            getCamera().enableAudio();
             Log.d(LOGTAG, "enabling audio");
         }
 
@@ -604,8 +615,22 @@ public class CameraService extends Service implements ConnectChecker,
     public void getSettings() {
         Log.d(LOGTAG, "Get settings");
         protocol = preferences.getString("protocol", "rtsp");
+        for (String codec : CodecUtil.showAllCodecsInfo())
+            Log.d(LOGTAG, "Codec: " + codec);
 
-        genericCamera2 = new GenericCamera2(getApplicationContext(), true, this);
+        if (protocol.startsWith("rtmp")) {
+            rtmpCamera2 = new RtmpCamera2(getApplicationContext(), true, this);
+            rtspCamera2 = null;
+            srtCamera2 = null;
+        } else if (protocol.equals("srt")) {
+            srtCamera2 = new SrtCamera2(getApplicationContext(), true, this);
+            rtspCamera2 = null;
+            rtmpCamera2 = null;
+        } else {
+            rtspCamera2 = new RtspCamera2(getApplicationContext(), true, this);
+            rtmpCamera2 = null;
+            srtCamera2 = null;
+        }
 
         stream = preferences.getBoolean("stream_video", true);
         enable_audio = preferences.getBoolean("enable_audio", true);
@@ -635,20 +660,31 @@ public class CameraService extends Service implements ConnectChecker,
         getResolution();
         prepareEncoders();
 
-        try {
-            genericCamera2.getStreamClient().setAuthorization(username, password);
-        } catch (NotImplementedError e) {
-            // RootEncoder throws NotImplementedError for the SrtClient in GenericCamera2, so just ignore it
-        }
+        if (protocol.startsWith("rtsp"))
+            rtspCamera2.getStreamClient().setAuthorization(username, password);
+        else if (protocol.startsWith("rtmp"))
+            rtmpCamera2.getStreamClient().setAuthorization(username, password);
+    }
+
+    public Camera2Base getCamera() {
+        if (rtspCamera2 != null)
+            return rtspCamera2;
+        if (rtmpCamera2 != null)
+            return rtmpCamera2;
+        if (srtCamera2 != null)
+            return srtCamera2;
+
+        return new RtmpCamera2(getApplicationContext(), true, this);
     }
 
     private void getResolution() {
         Log.d(LOGTAG, "Get res");
         ArrayList<Size> resolutions = new ArrayList<>();
-        List<Size> frontResolutions = genericCamera2.getResolutionsFront();
+
+        List<Size> frontResolutions = getCamera().getResolutionsFront();
 
         // Only get resolutions supported by both cameras
-        for (Size res : genericCamera2.getResolutionsBack()) {
+        for (Size res : getCamera().getResolutionsBack()) {
             if (frontResolutions.contains(res)) {
                 resolutions.add(res);
             }
@@ -674,21 +710,21 @@ public class CameraService extends Service implements ConnectChecker,
 
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
                 currentDateAndTime = sdf.format(new Date());
-                if (!genericCamera2.isStreaming()) {
+                if (!getCamera().isStreaming()) {
                     if (prepareEncoders()) {
-                        genericCamera2.startRecord(
+                        getCamera().startRecord(
                                 folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
                         Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
                     } else {
                         showNotification(getString(R.string.error_preparing_stream));
                     }
                 } else {
-                    genericCamera2.startRecord(
+                    getCamera().startRecord(
                             folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
                     Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
                 }
             } catch (IOException e) {
-                genericCamera2.stopRecord();
+                getCamera().stopRecord();
                 PathUtils.updateGallery(this, folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
                 Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
             }
@@ -697,8 +733,8 @@ public class CameraService extends Service implements ConnectChecker,
 
     private void stopRecording() {
         Log.d(LOGTAG, "Stop recording");
-        if (genericCamera2.isRecording()) {
-            genericCamera2.stopRecord();
+        if (getCamera().isRecording()) {
+            getCamera().stopRecord();
             PathUtils.updateGallery(this, folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
             Toast.makeText(this,
                     "file ".concat(currentDateAndTime).concat(".mp4 saved in ").concat(folder.getAbsolutePath()),
@@ -708,18 +744,18 @@ public class CameraService extends Service implements ConnectChecker,
 
     public void startStream() {
         Log.d(LOGTAG, "startStream");
-        if (!genericCamera2.isStreaming() && !genericCamera2.isRecording()) {
+        if (!getCamera().isStreaming() && !getCamera().isRecording()) {
             if (protocol.equals("rtsp") && tcp) {
-                genericCamera2.getStreamClient().setProtocol(Protocol.TCP);
+                rtspCamera2.getStreamClient().setProtocol(Protocol.TCP);
             } else if (Objects.equals(protocol, "rtsp")) {
-                genericCamera2.getStreamClient().setProtocol(Protocol.UDP);
+                rtspCamera2.getStreamClient().setProtocol(Protocol.UDP);
             }
 
-            if (genericCamera2.isRecording() || prepareEncoders()) {
+            if (getCamera().isRecording() || prepareEncoders()) {
 
                 if (!protocol.equals("srt") && !username.isEmpty() && !password.isEmpty()) {
                     try {
-                        genericCamera2.getStreamClient().setAuthorization(username, password);
+                        getCamera().getStreamClient().setAuthorization(username, password);
                     } catch (NotImplementedError e) {
                         Log.d(LOGTAG, e.getMessage());
                     }
@@ -728,11 +764,11 @@ public class CameraService extends Service implements ConnectChecker,
                 String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port)).concat("/").concat(path);
                 Log.d(LOGTAG, url);
 
-                if (!genericCamera2.isAutoFocusEnabled())
-                    genericCamera2.enableAutoFocus();
+                if (!getCamera().isAutoFocusEnabled())
+                    getCamera().enableAutoFocus();
 
                 if (stream) {
-                    genericCamera2.startStream(url);
+                    getCamera().startStream(url);
                     Log.d(LOGTAG, "Started stream to ".concat(url));
                     if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                             ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -763,8 +799,8 @@ public class CameraService extends Service implements ConnectChecker,
 
     public void stopStream(String error, String broadcastIntent) {
         Log.d(LOGTAG, "stopStream " + error);
-        if (genericCamera2.isStreaming())
-            genericCamera2.stopStream();
+        if (getCamera().isStreaming())
+            getCamera().stopStream();
 
         if (tcpClient != null) {
             Log.d(LOGTAG, "Stopping TcpClient");
@@ -788,7 +824,7 @@ public class CameraService extends Service implements ConnectChecker,
     }
 
     public void take_photo() {
-        genericCamera2.getGlInterface().takePhoto(bitmap -> {
+        getCamera().getGlInterface().takePhoto(bitmap -> {
 
             HandlerThread handlerThread = new HandlerThread("HandlerThread");
             handlerThread.start();
