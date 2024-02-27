@@ -26,6 +26,7 @@ Get the APK from this repo's [latest release](https://github.com/brian7704/OpenT
 - Audio Codecs
   - AAC
   - G711
+  - OPUS
 - Streaming protocols
   - RTSP
   - RTSPS

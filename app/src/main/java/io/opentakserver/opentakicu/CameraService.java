@@ -593,6 +593,7 @@ public class CameraService extends Service implements ConnectChecker,
                 CameraHelper.getCameraOrientation(this));
 
 
+        Log.d(LOGTAG, "Sample rate: " + samplerate + " stereo " + stereo);
         boolean prepareAudio = getCamera().prepareAudio(
                 audio_bitrate * 1024,
                 samplerate,
@@ -644,8 +645,6 @@ public class CameraService extends Service implements ConnectChecker,
         cert_password = preferences.getString("certificate_password", "atakatak");
         atak_address = preferences.getString("atak_address", address);
         Log.d(LOGTAG, "Got cert: " + cert_file);
-        samplerate = Integer.parseInt(preferences.getString("samplerate", "44100"));
-        stereo = preferences.getBoolean("stereo", true);
         echo_cancel = preferences.getBoolean("echo_cancel", true);
         noise_reduction = preferences.getBoolean("noise_reduction", true);
         fps = Integer.parseInt(preferences.getString("fps", "30"));
@@ -653,7 +652,18 @@ public class CameraService extends Service implements ConnectChecker,
         codec = preferences.getString("codec", "H264");
         bitrate = Integer.parseInt(preferences.getString("bitrate", "3000"));
         audio_bitrate = Integer.parseInt(preferences.getString("audio_bitrate", "128"));
-        audio_codec = preferences.getString("audio_codec", "AAC");
+        audio_codec = preferences.getString("audio_codec", AudioCodec.OPUS.name());
+
+        if (audio_codec.equals(AudioCodec.G711.name())) {
+            Log.d(LOGTAG, "Forcing G711 settings");
+            stereo = false;
+            samplerate = 8000;
+        } else {
+            Log.d(LOGTAG, "Audio Codec " + audio_codec);
+            stereo = preferences.getBoolean("stereo", true);
+            samplerate = Integer.parseInt(preferences.getString("samplerate", "44100"));
+        }
+
         adaptive_bitrate = preferences.getBoolean("adaptive_bitrate", true);
         uid = preferences.getString("uid", "OpenTAK-ICU-" + UUID.randomUUID().toString());
 
