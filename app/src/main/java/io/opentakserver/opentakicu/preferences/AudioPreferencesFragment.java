@@ -24,6 +24,7 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
     private ListPreference sample_rate;
     private SwitchPreference stereo;
     private SharedPreferences prefs;
+    private ListPreference codec;
     private static final String LOGTAG = "AudioPreferences";
 
     @Override
@@ -63,6 +64,26 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
         sample_rate.setEntryValues(samplerates.toArray(new CharSequence[samplerates.size()]));
     }
 
+    private void setAudioCodecs() {
+        ArrayList<String> codecs = new ArrayList<>();
+        codec = findPreference("audio_codec");
+
+        if (prefs.getString("protocol", "rtsp").startsWith("rtsp")) {
+            codecs.add("OPUS");
+            codecs.add("AAC");
+            codecs.add("G711");
+        } else if (prefs.getString("protocol", "rtsp").startsWith("rtmp")) {
+            codecs.add("AAC");
+            codecs.add("G711");
+        } else {
+            codecs.add("OPUS");
+            codecs.add("AAC");
+        }
+
+        codec.setEntries(codecs.toArray(new CharSequence[codecs.size()]));
+        codec.setEntryValues(codecs.toArray(new CharSequence[codecs.size()]));
+    }
+
     @Override
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         setPreferencesFromResource(R.xml.audio_preferences, rootKey);
@@ -72,6 +93,8 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
         sample_rate = findPreference("samplerate");
         sample_rate.setOnPreferenceClickListener(this);
         setSampleRates(prefs.getString("audio_codec", AudioCodec.OPUS.name()));
+
+        setAudioCodecs();
 
         findPreference("audio_codec").setOnPreferenceChangeListener(this);
         stereo = findPreference("stereo");

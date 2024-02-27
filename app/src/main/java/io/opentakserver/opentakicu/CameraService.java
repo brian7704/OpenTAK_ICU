@@ -470,12 +470,13 @@ public class CameraService extends Service implements ConnectChecker,
 
     @Override
     public void onAuthError() {
+        Log.d(LOGTAG, "Auth error");
         stopStream(getString(R.string.auth_error), AUTH_ERROR);
     }
 
     @Override
     public void onAuthSuccess() {
-
+        Log.d(LOGTAG, "Auth success");
     }
 
     @Override
@@ -556,8 +557,6 @@ public class CameraService extends Service implements ConnectChecker,
         int width = resolution.getWidth();
         int height = resolution.getHeight();
 
-
-
         if (Objects.equals(codec, "H264"))
             getCamera().setVideoCodec(VideoCodec.H264);
         else if (Objects.equals(codec, "H265"))
@@ -576,9 +575,14 @@ public class CameraService extends Service implements ConnectChecker,
         else if (audio_codec.equals("AAC")) {
             getCamera().setAudioCodec(AudioCodec.AAC);
             Log.d(LOGTAG, "Set audio codec to AAC");
-        } else {
+        } else if (!protocol.startsWith("rtmp")){
             getCamera().setAudioCodec(AudioCodec.OPUS);
             Log.d(LOGTAG, "Set audio codec to Opus");
+        } else if (protocol.startsWith("rtmp")) {
+            getCamera().setAudioCodec(AudioCodec.G711);
+            stereo = false;
+            samplerate = 8000;
+            Log.d(LOGTAG, "Protocol is RTMP, setting audio codec to G711");
         }
 
 
@@ -616,8 +620,6 @@ public class CameraService extends Service implements ConnectChecker,
     public void getSettings() {
         Log.d(LOGTAG, "Get settings");
         protocol = preferences.getString("protocol", "rtsp");
-        for (String codec : CodecUtil.showAllCodecsInfo())
-            Log.d(LOGTAG, "Codec: " + codec);
 
         if (protocol.startsWith("rtmp")) {
             rtmpCamera2 = new RtmpCamera2(getApplicationContext(), true, this);
@@ -672,8 +674,10 @@ public class CameraService extends Service implements ConnectChecker,
 
         if (protocol.startsWith("rtsp"))
             rtspCamera2.getStreamClient().setAuthorization(username, password);
-        else if (protocol.startsWith("rtmp"))
+        else if (protocol.startsWith("rtmp")) {
             rtmpCamera2.getStreamClient().setAuthorization(username, password);
+            Log.d(LOGTAG, "Set RTMP username and password");
+        }
     }
 
     public Camera2Base getCamera() {
@@ -786,15 +790,18 @@ public class CameraService extends Service implements ConnectChecker,
                         Toast.makeText(getApplicationContext(), R.string.no_location_permissions, Toast.LENGTH_LONG).show();
                         return;
                     }
-                    _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
-                    postVideoStream();
-                    Log.d(LOGTAG, "Starting Tcp Thread");
-                    tcpClient = new TcpClient(getApplicationContext(), address, port, message -> Log.d(LOGTAG, message));
-                    tcpClientThread = new Thread(tcpClient);
-                    tcpClientThread.start();
 
-                    sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
-                    sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+                    if (send_cot) {
+                        _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
+                        postVideoStream();
+                        Log.d(LOGTAG, "Starting Tcp Thread");
+                        tcpClient = new TcpClient(getApplicationContext(), address, port, message -> Log.d(LOGTAG, message));
+                        tcpClientThread = new Thread(tcpClient);
+                        tcpClientThread.start();
+
+                        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
+                        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+                    }
 
                     showNotification(getString(R.string.stream_in_progress));
                 }

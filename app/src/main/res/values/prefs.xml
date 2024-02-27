@@ -27,6 +27,7 @@
     <string-array name="codecs">
         <item>H264</item>
         <item>H265</item>
+        <item>AV1</item>
     </string-array>
 
     <string-array name="audio_codecs">
