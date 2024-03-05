@@ -19,11 +19,9 @@
         android:id="@+id/openGlView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:AAEnabled="false"
         app:aspectRatioMode="adjust"
         app:isFlipHorizontal="false"
         app:isFlipVertical="false"
-        app:numFilters="1"
         tools:layout_editor_absoluteX="96dp"
         tools:layout_editor_absoluteY="85dp" />
 
