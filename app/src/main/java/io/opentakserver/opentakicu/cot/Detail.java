@@ -6,13 +6,15 @@ public class Detail {
     Device device;
     Sensor sensor;
     Takv takv;
+    uid uid;
 
-    public Detail(Contact contact, __Video __video, Device device, Sensor sensor, Takv takv) {
+    public Detail(Contact contact, __Video __video, Device device, Sensor sensor, Takv takv, uid uid) {
         this.contact = contact;
         this.__video = __video;
         this.device = device;
         this.sensor = sensor;
         this.takv = takv;
+        this.uid = uid;
     }
 
     public Contact getContact() {
@@ -53,6 +55,14 @@ public class Detail {
 
     public void setTakv(Takv takv) {
         this.takv = takv;
+    }
+
+    public io.opentakserver.opentakicu.cot.uid getUid() {
+        return uid;
+    }
+
+    public void setUid(io.opentakserver.opentakicu.cot.uid uid) {
+        this.uid = uid;
     }
 }
 

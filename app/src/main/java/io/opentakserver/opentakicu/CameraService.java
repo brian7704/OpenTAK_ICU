@@ -655,6 +655,7 @@ public class CameraService extends Service implements ConnectChecker,
         bitrate = Integer.parseInt(preferences.getString("bitrate", "3000"));
         audio_bitrate = Integer.parseInt(preferences.getString("audio_bitrate", "128"));
         audio_codec = preferences.getString("audio_codec", AudioCodec.OPUS.name());
+        send_cot = preferences.getBoolean("send_cot", false);
 
         if (audio_codec.equals(AudioCodec.G711.name())) {
             Log.d(LOGTAG, "Forcing G711 settings");
@@ -910,7 +911,7 @@ public class CameraService extends Service implements ConnectChecker,
 
                 Takv takv = new Takv(getApplicationContext());
 
-                Detail detail = new Detail(contact, __video, device, sensor, takv);
+                Detail detail = new Detail(contact, __video, device, sensor, takv, null);
                 event.setDetail(detail);
 
                 XmlFactory xmlFactory = XmlFactory.builder()

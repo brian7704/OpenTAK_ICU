@@ -12,8 +12,15 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
 import androidx.annotation.Nullable;
 import androidx.preference.PreferenceManager;
+
+import io.opentakserver.opentakicu.cot.Contact;
+import io.opentakserver.opentakicu.cot.Detail;
+import io.opentakserver.opentakicu.cot.Point;
+import io.opentakserver.opentakicu.cot.Takv;
 import io.opentakserver.opentakicu.cot.auth;
 import io.opentakserver.opentakicu.cot.Cot;
+import io.opentakserver.opentakicu.cot.event;
+import io.opentakserver.opentakicu.cot.uid;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -55,6 +62,9 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
     private String atak_client_cert;
     private String atak_client_cert_password;
     private String uid;
+    private String path;
+    private String address;
+    private String protocol;
 
     private Socket socket;
     private SSLSocket sslSocket;
@@ -186,18 +196,36 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
                 context.sendBroadcast(new Intent(TAK_SERVER_CONNECTED).setPackage(context.getPackageName()));
             }
 
+            XmlFactory xmlFactory = XmlFactory.builder()
+                    .xmlInputFactory(new WstxInputFactory())
+                    .xmlOutputFactory(new WstxOutputFactory())
+                    .build();
+
+            XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
+
             if (atak_auth) {
-                XmlFactory xmlFactory = XmlFactory.builder()
-                        .xmlInputFactory(new WstxInputFactory())
-                        .xmlOutputFactory(new WstxOutputFactory())
-                        .build();
-
-                XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
-
                 Cot cot = new Cot(atak_username, atak_password, uid);
                 auth atakAuth = new auth(cot);
                 sendMessage(xmlMapper.writeValueAsString(atakAuth));
             }
+
+            // FTS requires this CoT to be sent before any others
+            event event = new event();
+            event.setHow("h-g-i-g-o");
+            event.setType("a-f-G-U-C");
+            event.setUid(uid);
+
+            Point point = new Point(0, 0, 0);
+            event.setPoint(point);
+
+            Contact contact = new Contact(path);
+
+            Takv takv = new Takv(context);
+
+            Detail detail = new Detail(contact, null, null, null, takv, new uid(path));
+            event.setDetail(detail);
+
+            sendMessage(xmlMapper.writeValueAsString(event));
 
             try {
                 //in this while the client listens for the messages sent by the server
@@ -243,6 +271,9 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
         atak_client_cert = prefs.getString("client_certificate", null);
         atak_client_cert_password = prefs.getString("client_cert_password", "atakatak");
         uid = prefs.getString("uid", "OpenTAK-ICU-" + UUID.randomUUID().toString());
+        path = prefs.getString("path", "PATH");
+        protocol = prefs.getString("protocol", "rtsp");
+        address = prefs.getString("address", "192.168.1.10");
     }
 
     @Override
