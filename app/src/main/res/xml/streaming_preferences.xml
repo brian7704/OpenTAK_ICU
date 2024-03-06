@@ -13,6 +13,11 @@
             android:key="protocol"
             android:title="Protocol"
             android:dependency="stream_video"/>
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="multicast"
+            android:title="@string/multicast"
+            android:dependency="stream_video" />
         <EditTextPreference
             android:defaultValue="example.com"
             android:key="address"
@@ -62,6 +67,7 @@
             android:key="certificate"
             android:selectAllOnFocus="true"
             android:singleLine="true"
+            android:defaultValue="false"
             android:title="@string/trust_store_cert"
             app:summary="@string/certificate_description"
             android:dependency="self_signed_cert" />

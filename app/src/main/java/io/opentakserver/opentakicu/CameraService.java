@@ -10,6 +10,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.lifecycle.MutableLiveData;
 import androidx.preference.PreferenceManager;
+import io.opentakserver.opentakicu.cot.ConnectionEntry;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
 import io.opentakserver.opentakicu.cot.Device;
@@ -121,6 +122,7 @@ public class CameraService extends Service implements ConnectChecker,
     private RtspCamera2 rtspCamera2;
     private RtmpCamera2 rtmpCamera2;
     private SrtCamera2 srtCamera2;
+    private GenericCamera2 genericCamera2;
     private BitrateAdapter bitrateAdapter;
 
     private String protocol;
@@ -175,15 +177,15 @@ public class CameraService extends Service implements ConnectChecker,
     private OkHttpClient okHttpClient = new OkHttpClient();
     private TcpClient tcpClient;
     private Thread tcpClientThread;
+    private MulticastClient multicastClient;
+    private Thread multicastThread;
     ExecutorService executor = Executors.newSingleThreadExecutor();
 
     final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            Log.d(LOGTAG, "onReceive: " + intent);
             if (action != null) {
-                Log.d(LOGTAG, "Got broadcast " + action);
                 switch (action) {
                     case START_STREAM:
                         startStream();
@@ -496,7 +498,6 @@ public class CameraService extends Service implements ConnectChecker,
             Log.d(LOGTAG, "Setting adaptive bitrate");
             bitrateAdapter = new BitrateAdapter(bitrate -> {
                 getCamera().setVideoBitrateOnFly(bitrate);
-                Log.d(LOGTAG, "Set bitrate to ".concat(String.valueOf(bitrate)));
             });
             bitrateAdapter.setMaxBitrate(getCamera().getBitrate());
         } else {
@@ -513,7 +514,6 @@ public class CameraService extends Service implements ConnectChecker,
     @Override
     public void onNewBitrate(final long bitrate) {
         if (bitrateAdapter != null) {
-            Log.d(LOGTAG, "Set bitrate to " + bitrate);
             bitrateAdapter.adaptBitrate(bitrate, getCamera().getStreamClient().hasCongestion());
             Intent intent = new Intent(NEW_BITRATE);
             intent.putExtra(NEW_BITRATE, bitrate);
@@ -557,14 +557,16 @@ public class CameraService extends Service implements ConnectChecker,
         int width = resolution.getWidth();
         int height = resolution.getHeight();
 
-        if (Objects.equals(codec, "H264"))
+        if (Objects.equals(codec, VideoCodec.H264.name()))
             getCamera().setVideoCodec(VideoCodec.H264);
-        else if (Objects.equals(codec, "H265"))
+        else if (Objects.equals(codec, VideoCodec.H265.name()))
             getCamera().setVideoCodec(VideoCodec.H265);
-        else if (Objects.equals(codec, "AV1"))
+        else if (Objects.equals(codec, VideoCodec.AV1.name()))
             getCamera().setVideoCodec(VideoCodec.AV1);
 
-        if (Objects.equals(audio_codec, "G711"))
+        if (protocol.equals("udp")) {
+            getCamera().setAudioCodec(AudioCodec.AAC);
+        } else if (Objects.equals(audio_codec, AudioCodec.G711))
             try {
                 getCamera().setAudioCodec(AudioCodec.G711);
                 Log.d(LOGTAG, "Set audio codec to G711");
@@ -572,7 +574,7 @@ public class CameraService extends Service implements ConnectChecker,
                 getCamera().setAudioCodec(AudioCodec.AAC);
                 Log.d(LOGTAG, "Failed to set audio codec to G711, falling back to AAC: " + e.getMessage());
             }
-        else if (audio_codec.equals("AAC")) {
+        else if (audio_codec.equals(AudioCodec.AAC.name())) {
             getCamera().setAudioCodec(AudioCodec.AAC);
             Log.d(LOGTAG, "Set audio codec to AAC");
         } else if (!protocol.startsWith("rtmp")){
@@ -584,7 +586,6 @@ public class CameraService extends Service implements ConnectChecker,
             samplerate = 8000;
             Log.d(LOGTAG, "Protocol is RTMP, setting audio codec to G711");
         }
-
 
         Log.d(LOGTAG, "Setting video bitrate to ".concat(String.valueOf(bitrate)));
         Log.d(LOGTAG, "Setting audio bitrate to ".concat(String.valueOf(audio_bitrate)));
@@ -625,15 +626,25 @@ public class CameraService extends Service implements ConnectChecker,
             rtmpCamera2 = new RtmpCamera2(getApplicationContext(), true, this);
             rtspCamera2 = null;
             srtCamera2 = null;
+            genericCamera2 = null;
         } else if (protocol.equals("srt")) {
             srtCamera2 = new SrtCamera2(getApplicationContext(), true, this);
             rtspCamera2 = null;
             rtmpCamera2 = null;
-        } else {
+            genericCamera2 = null;
+        } else if (protocol.startsWith("rtsp")){
             rtspCamera2 = new RtspCamera2(getApplicationContext(), true, this);
             rtmpCamera2 = null;
             srtCamera2 = null;
+            genericCamera2 = null;
+        } else {
+            genericCamera2 = new GenericCamera2(getApplicationContext(), true, this);
+            rtmpCamera2 = null;
+            srtCamera2 = null;
+            rtspCamera2 = null;
         }
+
+        getCamera().getStreamClient().setLogs(false);
 
         stream = preferences.getBoolean("stream_video", true);
         enable_audio = preferences.getBoolean("enable_audio", true);
@@ -688,6 +699,8 @@ public class CameraService extends Service implements ConnectChecker,
             return rtmpCamera2;
         if (srtCamera2 != null)
             return srtCamera2;
+        if (genericCamera2 != null)
+            return genericCamera2;
 
         return new RtmpCamera2(getApplicationContext(), true, this);
     }
@@ -768,7 +781,7 @@ public class CameraService extends Service implements ConnectChecker,
 
             if (getCamera().isRecording() || prepareEncoders()) {
 
-                if (!protocol.equals("srt") && !username.isEmpty() && !password.isEmpty()) {
+                if (!protocol.equals("srt") && !protocol.startsWith("udp") && !username.isEmpty() && !password.isEmpty()) {
                     try {
                         getCamera().getStreamClient().setAuthorization(username, password);
                     } catch (NotImplementedError e) {
@@ -776,7 +789,51 @@ public class CameraService extends Service implements ConnectChecker,
                     }
                 }
 
-                String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port)).concat("/").concat(path);
+                String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port));
+                if (!protocol.equals("udp"))
+                    url = url.concat("/").concat(path);
+                else {
+                    try {
+                        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                            //This will probably never show since the OnBoardingActivity forces users to grant permission before using the app
+                            Toast.makeText(getApplicationContext(), R.string.no_location_permissions, Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
+                        Log.d(LOGTAG,  "Requesting Locatiion updates");
+                        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
+                        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+
+                        multicastClient = new MulticastClient(getApplicationContext());
+                        event event = new event();
+                        event.setUid(uid);
+
+                        Point point = new Point(9999999, 9999999, 9999999);
+                        event.setPoint(point);
+
+                        ConnectionEntry connectionEntry = new ConnectionEntry(address, path, uid, port, null, protocol);
+                        connectionEntry.setRtspReliable(null);
+                        __Video __video = new __Video(url, uid, connectionEntry);
+                        Device device = new Device(rotationInDegrees, 0);
+                        Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
+                        Contact contact = new Contact(path);
+
+                        Detail detail = new Detail(contact, __video, device, sensor, null, null);
+                        event.setDetail(detail);
+
+                        XmlFactory xmlFactory = XmlFactory.builder()
+                                .xmlInputFactory(new WstxInputFactory())
+                                .xmlOutputFactory(new WstxOutputFactory())
+                                .build();
+
+                        XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
+                        String cot = xmlMapper.writeValueAsString(event);
+                        multicastClient.send_cot(cot);
+                    } catch (Exception e) {
+                        Log.e(LOGTAG, "Failed to send UDP CoT", e);
+                    }
+                }
                 Log.d(LOGTAG, url);
 
                 if (!getCamera().isAutoFocusEnabled())
@@ -795,10 +852,12 @@ public class CameraService extends Service implements ConnectChecker,
                     if (send_cot) {
                         _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
                         postVideoStream();
-                        Log.d(LOGTAG, "Starting Tcp Thread");
-                        tcpClient = new TcpClient(getApplicationContext(), address, port, message -> Log.d(LOGTAG, message));
-                        tcpClientThread = new Thread(tcpClient);
-                        tcpClientThread.start();
+                        if (!protocol.equals("udp")) {
+                            Log.d(LOGTAG, "Starting Tcp Thread");
+                            tcpClient = new TcpClient(getApplicationContext(), address, port, message -> Log.d(LOGTAG, message));
+                            tcpClientThread = new Thread(tcpClient);
+                            tcpClientThread.start();
+                        }
 
                         sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
                         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
@@ -824,6 +883,10 @@ public class CameraService extends Service implements ConnectChecker,
             Log.d(LOGTAG, "Stopping TcpClient");
             tcpClient.setmRun(false);
             tcpClientThread.interrupt();
+        }
+
+        if (multicastClient != null) {
+            multicastClient = null;
         }
 
         stopRecording();
@@ -904,14 +967,15 @@ public class CameraService extends Service implements ConnectChecker,
                 Contact contact = new Contact(path);
 
                 String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port)).concat("/").concat(path);
-                __Video __video = new __Video(url, uid);
+                ConnectionEntry connectionEntry = null;
+                if (protocol.equals("udp"))
+                    connectionEntry = new ConnectionEntry(address, path, uid, port, null, protocol);
+                __Video __video = new __Video(url, uid, connectionEntry);
 
                 Device device = new Device(rotationInDegrees,0);
                 Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
 
-                Takv takv = new Takv(getApplicationContext());
-
-                Detail detail = new Detail(contact, __video, device, sensor, takv, null);
+                Detail detail = new Detail(contact, __video, device, sensor, null, null);
                 event.setDetail(detail);
 
                 XmlFactory xmlFactory = XmlFactory.builder()
@@ -921,8 +985,10 @@ public class CameraService extends Service implements ConnectChecker,
 
                 XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
                 String cot = xmlMapper.writeValueAsString(event);
-                if (tcpClient != null)
+                if (!protocol.equals("udp") && tcpClient != null)
                     tcpClient.sendMessage(cot);
+                else if (protocol.equals("udp") && multicastClient != null)
+                    multicastClient.send_cot(cot);
 
             } catch (Exception e) {
                 Log.e(LOGTAG, "Failed to send location to ATAK: " + e.getLocalizedMessage());

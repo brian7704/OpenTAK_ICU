@@ -6,6 +6,7 @@
         <item>rtmp</item>
         <item>rtmps</item>
         <item>srt</item>
+        <item>udp</item>
     </string-array>
 
     <string-array name="bitrates">

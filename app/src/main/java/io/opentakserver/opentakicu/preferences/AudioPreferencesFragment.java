@@ -69,15 +69,19 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
         codec = findPreference("audio_codec");
 
         if (prefs.getString("protocol", "rtsp").startsWith("rtsp")) {
-            codecs.add("OPUS");
-            codecs.add("AAC");
-            codecs.add("G711");
+            codecs.add(AudioCodec.OPUS.name());
+            codecs.add(AudioCodec.AAC.name());
+            codecs.add(AudioCodec.G711.name());
         } else if (prefs.getString("protocol", "rtsp").startsWith("rtmp")) {
-            codecs.add("AAC");
-            codecs.add("G711");
-        } else {
-            codecs.add("OPUS");
-            codecs.add("AAC");
+            codecs.add(AudioCodec.AAC.name());
+            codecs.add(AudioCodec.G711.name());
+        } else if (prefs.getString("protocol", "rtsp").equals("srt")){
+            codecs.add(AudioCodec.OPUS.name());
+            codecs.add(AudioCodec.AAC.name());
+        } else if (prefs.getString("protocol", "rtsp").equals("udp")) {
+            codecs.add(AudioCodec.OPUS.name());
+            codecs.add(AudioCodec.AAC.name());
+            codecs.add(AudioCodec.G711.name());
         }
 
         codec.setEntries(codecs.toArray(new CharSequence[codecs.size()]));

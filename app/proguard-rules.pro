@@ -22,3 +22,4 @@
 -keepclassmembers class * extends androidx.datastore.preferences.protobuf.GeneratedMessageLite {
     <fields>;
 }
+-dontwarn aQute.bnd.annotation.spi.ServiceProvider*

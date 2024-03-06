@@ -145,4 +145,5 @@
     <string name="yes">Yes</string>
     <string name="network_lost">Network Connectivity Lost</string>
     <string name="not_streaming">Not Streaming</string>
+    <string name="multicast">UDP Multicast</string>
 </resources>

@@ -1,7 +1,20 @@
 import java.io.ByteArrayOutputStream
+import java.util.Properties
+import java.io.FileInputStream
+
+// Create a variable called keystorePropertiesFile, and initialize it to your
+// keystore.properties file, in the rootProject folder.
+val keystorePropertiesFile = file("../../keystore.properties")
+
+// Initialize a new Properties() object called keystoreProperties.
+val keystoreProperties = Properties()
+
+// Load your keystore.properties file into the keystoreProperties object.
+keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 
 plugins {
     id("com.android.application")
+    id("com.google.gms.google-services")
 }
 
 val gitDescribe: String by lazy {
@@ -33,13 +46,25 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["RELEASE_KEY_ALIAS"] as String
+            keyPassword = keystoreProperties["RELEASE_KEY_PASSWORD"] as String
+            storeFile = file("../../android_cert.jks")
+            storePassword = keystoreProperties["RELEASE_STORE_PASSWORD"] as String
+        }
+    }
+
     buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+        getByName("release") {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
+        }
+
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+            isDebuggable = true
         }
     }
     compileOptions {
@@ -57,7 +82,8 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.navigation:navigation-fragment:2.7.6")
     implementation("androidx.navigation:navigation-ui:2.7.6")
-    implementation("com.github.pedroSG94.RootEncoder:library:2.3.8")
+    //implementation("com.github.pedroSG94.RootEncoder:library:2.3.8")
+    implementation("com.github.pedroSG94.RootEncoder:library:5446a06")
     implementation("com.github.AppIntro:AppIntro:6.3.1")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("androidx.datastore:datastore-preferences-rxjava3:1.0.0")
@@ -67,6 +93,11 @@ dependencies {
     implementation("javax.xml.stream:stax-api:1.0-2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.sealwu:kscript-tools:1.0.2")
+    implementation("com.google.firebase:firebase-analytics:21.5.1")
+    implementation(platform("com.google.firebase:firebase-bom:32.7.3"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

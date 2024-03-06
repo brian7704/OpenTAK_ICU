@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "41068867738",
+    "project_id": "docs-894ad",
+    "storage_bucket": "docs-894ad.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:41068867738:android:11f9e46268d1bf435bef23",
+        "android_client_info": {
+          "package_name": "io.opentakserver.opentakicu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCGSgnjZUPDa0asp-NxR9e7VjrXij8xHBo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:41068867738:android:11f9e46268d1bf435bef23",
+        "android_client_info": {
+          "package_name": "io.opentakserver.opentakicu.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCGSgnjZUPDa0asp-NxR9e7VjrXij8xHBo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

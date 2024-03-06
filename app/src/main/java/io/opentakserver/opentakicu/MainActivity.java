@@ -33,6 +33,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.BuildConfig;
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.pedro.encoder.input.video.CameraHelper;
 
 import androidx.preference.PreferenceManager;
@@ -64,12 +66,12 @@ public class MainActivity extends AppCompatActivity
     private boolean service_bound = false;
     private CameraService camera_service;
     private long last_fix_time = 0;
+    private FirebaseAnalytics mFirebaseAnalytics;
 
     final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            Log.d(LOGTAG, "Got broadcast: " + intent);
             if (action != null && action.equals(CameraService.EXIT_APP)) {
                 Log.d(LOGTAG, "Exiting app");
                 finishAndRemoveTask();
@@ -144,6 +146,13 @@ public class MainActivity extends AppCompatActivity
         pictureButton = findViewById(R.id.pictureButton);
         pictureButton.setOnClickListener(this);
 
+        if (!BuildConfig.DEBUG) {
+            mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+            Bundle bundle = new Bundle();
+            bundle.putString("Activity", "MainActivity");
+            mFirebaseAnalytics.logEvent("Start", bundle);
+        }
+
         String uid = pref.getString("uid", null);
         if (uid == null)
             pref.edit().putString("uid", "OpenTAK-ICU-" + UUID.randomUUID().toString()).apply();
@@ -209,9 +218,11 @@ public class MainActivity extends AppCompatActivity
         intentFilter.addAction(TcpClient.TAK_SERVER_DISCONNECTED);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
+            Log.d(LOGTAG, "Registered Receiver >= TIRAMISU");
         } else {
             registerReceiver(receiver, intentFilter);
+            Log.d(LOGTAG, "REGGGISTERED RECEIVER < T");
         }
 
         NetworkRequest networkRequest = new NetworkRequest.Builder()
