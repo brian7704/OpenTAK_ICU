@@ -241,8 +241,7 @@ public class CameraService extends Service implements ConnectChecker,
         intentFilter.addAction(EXIT_APP);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Log.d(LOGTAG, "Setting up receiver");
-            registerReceiver(receiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
         } else {
             registerReceiver(receiver, intentFilter);
         }
@@ -368,7 +367,7 @@ public class CameraService extends Service implements ConnectChecker,
             else if (getCamera().isLanternSupported() && !getCamera().isLanternEnabled())
                 getCamera().enableLantern();
         } catch (Exception e) {
-            Log.e(LOGTAG, "Failed to toggle lantern: " + e.getMessage());
+            Log.e(LOGTAG, "Failed to toggle lantern", e);
         }
     }
 
