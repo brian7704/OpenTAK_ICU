@@ -83,7 +83,7 @@ dependencies {
     implementation("androidx.navigation:navigation-fragment:2.7.6")
     implementation("androidx.navigation:navigation-ui:2.7.6")
     //implementation("com.github.pedroSG94.RootEncoder:library:2.3.8")
-    implementation("com.github.pedroSG94.RootEncoder:library:5446a06")
+    implementation("com.github.pedroSG94.RootEncoder:library:6c149a5")
     implementation("com.github.AppIntro:AppIntro:6.3.1")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("androidx.datastore:datastore-preferences-rxjava3:1.0.0")

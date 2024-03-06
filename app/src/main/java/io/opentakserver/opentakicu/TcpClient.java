@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.ctc.wstx.stax.WstxInputFactory;
 import com.ctc.wstx.stax.WstxOutputFactory;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.dataformat.xml.XmlFactory;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
@@ -202,6 +203,7 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
                     .build();
 
             XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
+            xmlMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
 
             if (atak_auth) {
                 Cot cot = new Cot(atak_username, atak_password, uid);

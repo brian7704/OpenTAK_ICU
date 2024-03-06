@@ -14,7 +14,6 @@ import io.opentakserver.opentakicu.cot.ConnectionEntry;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
 import io.opentakserver.opentakicu.cot.Device;
-import io.opentakserver.opentakicu.cot.Takv;
 import io.opentakserver.opentakicu.cot.feed;
 import io.opentakserver.opentakicu.cot.videoConnections;
 import io.opentakserver.opentakicu.cot.event;
@@ -65,6 +64,7 @@ import android.widget.Toast;
 
 import com.ctc.wstx.stax.WstxInputFactory;
 import com.ctc.wstx.stax.WstxOutputFactory;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.dataformat.xml.XmlFactory;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.pedro.common.AudioCodec;
@@ -72,12 +72,11 @@ import com.pedro.common.ConnectChecker;
 import com.pedro.common.VideoCodec;
 import com.pedro.encoder.input.video.CameraCallbacks;
 import com.pedro.encoder.input.video.CameraHelper;
-import com.pedro.encoder.utils.CodecUtil;
 import com.pedro.library.base.Camera2Base;
-import com.pedro.library.generic.GenericCamera2;
 import com.pedro.library.rtmp.RtmpCamera2;
 import com.pedro.library.rtsp.RtspCamera2;
 import com.pedro.library.srt.SrtCamera2;
+import com.pedro.library.udp.UdpCamera2;
 import com.pedro.library.util.BitrateAdapter;
 import com.pedro.library.view.OpenGlView;
 import com.pedro.rtsp.rtsp.Protocol;
@@ -122,7 +121,7 @@ public class CameraService extends Service implements ConnectChecker,
     private RtspCamera2 rtspCamera2;
     private RtmpCamera2 rtmpCamera2;
     private SrtCamera2 srtCamera2;
-    private GenericCamera2 genericCamera2;
+    private UdpCamera2 udpCamera2;
     private BitrateAdapter bitrateAdapter;
 
     private String protocol;
@@ -178,7 +177,6 @@ public class CameraService extends Service implements ConnectChecker,
     private TcpClient tcpClient;
     private Thread tcpClientThread;
     private MulticastClient multicastClient;
-    private Thread multicastThread;
     ExecutorService executor = Executors.newSingleThreadExecutor();
 
     final BroadcastReceiver receiver = new BroadcastReceiver() {
@@ -564,27 +562,15 @@ public class CameraService extends Service implements ConnectChecker,
         else if (Objects.equals(codec, VideoCodec.AV1.name()))
             getCamera().setVideoCodec(VideoCodec.AV1);
 
-        if (protocol.equals("udp")) {
-            getCamera().setAudioCodec(AudioCodec.AAC);
-        } else if (Objects.equals(audio_codec, AudioCodec.G711))
-            try {
-                getCamera().setAudioCodec(AudioCodec.G711);
-                Log.d(LOGTAG, "Set audio codec to G711");
-            } catch (RuntimeException e) {
-                getCamera().setAudioCodec(AudioCodec.AAC);
-                Log.d(LOGTAG, "Failed to set audio codec to G711, falling back to AAC: " + e.getMessage());
-            }
-        else if (audio_codec.equals(AudioCodec.AAC.name())) {
+        if (Objects.equals(audio_codec, AudioCodec.G711.name())) {
+            getCamera().setAudioCodec(AudioCodec.G711);
+            Log.d(LOGTAG, "Set audio codec to G711");
+        } else if (audio_codec.equals(AudioCodec.AAC.name())) {
             getCamera().setAudioCodec(AudioCodec.AAC);
             Log.d(LOGTAG, "Set audio codec to AAC");
-        } else if (!protocol.startsWith("rtmp")){
+        } else if (audio_codec.equals(AudioCodec.OPUS.name())) {
             getCamera().setAudioCodec(AudioCodec.OPUS);
-            Log.d(LOGTAG, "Set audio codec to Opus");
-        } else if (protocol.startsWith("rtmp")) {
-            getCamera().setAudioCodec(AudioCodec.G711);
-            stereo = false;
-            samplerate = 8000;
-            Log.d(LOGTAG, "Protocol is RTMP, setting audio codec to G711");
+            Log.d(LOGTAG, "Set audio codec to OPUS");
         }
 
         Log.d(LOGTAG, "Setting video bitrate to ".concat(String.valueOf(bitrate)));
@@ -626,19 +612,19 @@ public class CameraService extends Service implements ConnectChecker,
             rtmpCamera2 = new RtmpCamera2(getApplicationContext(), true, this);
             rtspCamera2 = null;
             srtCamera2 = null;
-            genericCamera2 = null;
+            udpCamera2 = null;
         } else if (protocol.equals("srt")) {
             srtCamera2 = new SrtCamera2(getApplicationContext(), true, this);
             rtspCamera2 = null;
             rtmpCamera2 = null;
-            genericCamera2 = null;
+            udpCamera2 = null;
         } else if (protocol.startsWith("rtsp")){
             rtspCamera2 = new RtspCamera2(getApplicationContext(), true, this);
             rtmpCamera2 = null;
             srtCamera2 = null;
-            genericCamera2 = null;
+            udpCamera2 = null;
         } else {
-            genericCamera2 = new GenericCamera2(getApplicationContext(), true, this);
+            udpCamera2 = new UdpCamera2(getApplicationContext(), true, this);
             rtmpCamera2 = null;
             srtCamera2 = null;
             rtspCamera2 = null;
@@ -699,8 +685,8 @@ public class CameraService extends Service implements ConnectChecker,
             return rtmpCamera2;
         if (srtCamera2 != null)
             return srtCamera2;
-        if (genericCamera2 != null)
-            return genericCamera2;
+        if (udpCamera2 != null)
+            return udpCamera2;
 
         return new RtmpCamera2(getApplicationContext(), true, this);
     }
@@ -812,7 +798,7 @@ public class CameraService extends Service implements ConnectChecker,
                         Point point = new Point(9999999, 9999999, 9999999);
                         event.setPoint(point);
 
-                        ConnectionEntry connectionEntry = new ConnectionEntry(address, path, uid, port, null, protocol);
+                        ConnectionEntry connectionEntry = new ConnectionEntry(address, path, uid, port, "", protocol);
                         connectionEntry.setRtspReliable(null);
                         __Video __video = new __Video(url, uid, connectionEntry);
                         Device device = new Device(rotationInDegrees, 0);
@@ -828,6 +814,7 @@ public class CameraService extends Service implements ConnectChecker,
                                 .build();
 
                         XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
+                        xmlMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
                         String cot = xmlMapper.writeValueAsString(event);
                         multicastClient.send_cot(cot);
                     } catch (Exception e) {
@@ -966,10 +953,15 @@ public class CameraService extends Service implements ConnectChecker,
 
                 Contact contact = new Contact(path);
 
-                String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port)).concat("/").concat(path);
+                String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port));
+
                 ConnectionEntry connectionEntry = null;
-                if (protocol.equals("udp"))
-                    connectionEntry = new ConnectionEntry(address, path, uid, port, null, protocol);
+                if (protocol.equals("udp")) {
+                    connectionEntry = new ConnectionEntry(address, path, uid, port, "", protocol);
+                    connectionEntry.setRtspReliable(null);
+                } else {
+                    url = url.concat("/").concat(path);
+                }
                 __Video __video = new __Video(url, uid, connectionEntry);
 
                 Device device = new Device(rotationInDegrees,0);
@@ -984,6 +976,7 @@ public class CameraService extends Service implements ConnectChecker,
                         .build();
 
                 XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
+                xmlMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
                 String cot = xmlMapper.writeValueAsString(event);
                 if (!protocol.equals("udp") && tcpClient != null)
                     tcpClient.sendMessage(cot);
