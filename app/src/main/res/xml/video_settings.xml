@@ -12,18 +12,18 @@
             android:defaultValue="1000"
             android:inputType="number"
             android:key="bitrate"
-            android:title="Bitrate" />
+            android:title="@string/bitrate" />
         <SwitchPreference
             android:defaultValue="true"
             android:key="adaptive_bitrate"
-            android:title="Adaptive Bitrate"
-            app:summary="Changes the bitrate dynamically based on your bandwidth" />
+            android:title="@string/adaptive_bitrate"
+            app:summary="@string/adaptive_bitrate_summary" />
         <ListPreference
             android:defaultValue="1"
             android:entries="@array/fps"
             android:entryValues="@array/fps"
             android:key="fps"
-            android:title="FPS" />
+            android:title="@string/fps" />
         <ListPreference
             android:key="codec"
             android:title="@string/codec"

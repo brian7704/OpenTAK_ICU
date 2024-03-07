@@ -146,4 +146,10 @@
     <string name="network_lost">Network Connectivity Lost</string>
     <string name="not_streaming">Not Streaming</string>
     <string name="multicast">UDP Multicast</string>
+    <string name="stream_port">Stream Port</string>
+    <string name="stream_address">Stream Address</string>
+    <string name="stream_protocol">Stream Protocol</string>
+    <string name="stream_tcp_summary">Required if the server is behind a firewall or NAT. Disable for UDP.</string>
+    <string name="adaptive_bitrate">Adaptive Bitrate</string>
+    <string name="adaptive_bitrate_summary">Changes the bitrate dynamically based on your bandwidth</string>
 </resources>

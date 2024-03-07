@@ -10,6 +10,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.lifecycle.MutableLiveData;
 import androidx.preference.PreferenceManager;
+import io.opentakserver.opentakicu.contants.Preferences;
 import io.opentakserver.opentakicu.cot.ConnectionEntry;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
@@ -131,6 +132,7 @@ public class CameraService extends Service implements ConnectChecker,
     private boolean tcp;
     private String username;
     private String password;
+    private boolean stream_self_signed_cert;
     private String cert_file;
     private String cert_password;
     private int samplerate;
@@ -520,7 +522,7 @@ public class CameraService extends Service implements ConnectChecker,
 
     private void addCert() {
         Log.d(LOGTAG, "add cert");
-        if (cert_file != null) {
+        if (stream_self_signed_cert && cert_file != null) {
             try {
                 Log.d(LOGTAG, "Using cert: " + getFilesDir().getAbsolutePath());
                 KeyStore keyStore = KeyStore.getInstance("PKCS12");
@@ -605,7 +607,9 @@ public class CameraService extends Service implements ConnectChecker,
 
     public void getSettings() {
         Log.d(LOGTAG, "Get settings");
-        protocol = preferences.getString("protocol", "rtsp");
+        uid = preferences.getString(Preferences.UID, Preferences.UID_DEFAULT);
+
+        protocol = preferences.getString(Preferences.STREAM_PROTOCOL, Preferences.STREAM_PROTOCOL_DEFAULT);
 
         if (protocol.startsWith("rtmp")) {
             rtmpCamera2 = new RtmpCamera2(getApplicationContext(), true, this);
@@ -631,40 +635,45 @@ public class CameraService extends Service implements ConnectChecker,
 
         getCamera().getStreamClient().setLogs(false);
 
-        stream = preferences.getBoolean("stream_video", true);
-        enable_audio = preferences.getBoolean("enable_audio", true);
-        address = preferences.getString("address", "192.168.1.10");
-        port = Integer.parseInt(preferences.getString("port", "8554"));
-        path = preferences.getString("path", "stream");
-        tcp = preferences.getBoolean("tcp", false);
-        username = preferences.getString("username", "administrator");
-        password = preferences.getString("password", "password");
-        cert_file = preferences.getString("certificate", null);
-        cert_password = preferences.getString("certificate_password", "atakatak");
-        atak_address = preferences.getString("atak_address", address);
+        /* Stream Preferences */
+        stream = preferences.getBoolean(Preferences.STREAM_VIDEO, Preferences.STREAM_VIDEO_DEFAULT);
+        address = preferences.getString(Preferences.STREAM_ADDRESS, Preferences.STREAM_ADDRESS_DEFAULT);
+        port = Integer.parseInt(preferences.getString(Preferences.STREAM_PORT, Preferences.STREAM_PORT_DEFAULT));
+        path = preferences.getString(Preferences.STREAM_PATH, Preferences.STREAM_PATH_DEFAULT);
+        tcp = preferences.getBoolean(Preferences.STREAM_USE_TCP, Preferences.STREAM_USE_TCP_DEFAULT);
+        username = preferences.getString(Preferences.STREAM_USERNAME, Preferences.STREAM_USERNAME_DEFAULT);
+        password = preferences.getString(Preferences.STREAM_PASSWORD, Preferences.STREAM_PASSWORD_DEFAULT);
+        stream_self_signed_cert = preferences.getBoolean(Preferences.STREAM_SELF_SIGNED_CERT, Preferences.STREAM_SELF_SIGNED_CERT_DEFAULT);
+        cert_file = preferences.getString(Preferences.STREAM_CERTIFICATE, Preferences.STREAM_CERTIFICATE_DEFAULT);
+        cert_password = preferences.getString(Preferences.STREAM_CERTIFICATE_PASSWORD, Preferences.STREAM_CERTIFICATE_PASSWORD_DEFAULT);
         Log.d(LOGTAG, "Got cert: " + cert_file);
-        echo_cancel = preferences.getBoolean("echo_cancel", true);
-        noise_reduction = preferences.getBoolean("noise_reduction", true);
-        fps = Integer.parseInt(preferences.getString("fps", "30"));
-        record = preferences.getBoolean("record", false);
-        codec = preferences.getString("codec", "H264");
-        bitrate = Integer.parseInt(preferences.getString("bitrate", "3000"));
-        audio_bitrate = Integer.parseInt(preferences.getString("audio_bitrate", "128"));
-        audio_codec = preferences.getString("audio_codec", AudioCodec.OPUS.name());
-        send_cot = preferences.getBoolean("send_cot", false);
 
+        /* Video Preferences */
+        fps = Integer.parseInt(preferences.getString(Preferences.VIDEO_FPS, Preferences.VIDEO_FPS_DEFAULT));
+        record = preferences.getBoolean(Preferences.RECORD_VIDEO, Preferences.RECORD_VIDEO_DEFAULT);
+        codec = preferences.getString(Preferences.VIDEO_CODEC, Preferences.VIDEO_CODEC_DEFAULT);
+        bitrate = Integer.parseInt(preferences.getString(Preferences.VIDEO_BITRATE, Preferences.VIDEO_BITRATE_DEFAULT));
+        adaptive_bitrate = preferences.getBoolean(Preferences.VIDEO_ADAPTIVE_BITRATE, Preferences.VIDEO_ADAPTIVE_BITRATE_DEFAULT);
+
+        /* Audio Preferences */
+        enable_audio = preferences.getBoolean(Preferences.ENABLE_AUDIO, Preferences.ENABLE_AUDIO_DEFAULT);
+        echo_cancel = preferences.getBoolean(Preferences.AUDIO_ECHO_CANCEL, Preferences.AUDIO_ECHO_CANCEL_DEFAULT);
+        noise_reduction = preferences.getBoolean(Preferences.AUDIO_NOISE_REDUCTION, Preferences.AUDIO_NOISE_REDUCTION_DEFAULT);
+        audio_bitrate = Integer.parseInt(preferences.getString(Preferences.AUDIO_BITRATE, Preferences.AUDIO_BITRATE_DEFAULT));
+        audio_codec = preferences.getString(Preferences.AUDIO_CODEC, Preferences.AUDIO_CODEC_DEFAULT);
         if (audio_codec.equals(AudioCodec.G711.name())) {
             Log.d(LOGTAG, "Forcing G711 settings");
             stereo = false;
             samplerate = 8000;
         } else {
             Log.d(LOGTAG, "Audio Codec " + audio_codec);
-            stereo = preferences.getBoolean("stereo", true);
-            samplerate = Integer.parseInt(preferences.getString("samplerate", "44100"));
+            stereo = preferences.getBoolean(Preferences.STEREO_AUDIO, Preferences.STEREO_AUDIO_DEFAULT);
+            samplerate = Integer.parseInt(preferences.getString(Preferences.AUDIO_SAMPLE_RATE, Preferences.AUDIO_SAMPLE_RATE_DEFAULT));
         }
 
-        adaptive_bitrate = preferences.getBoolean("adaptive_bitrate", true);
-        uid = preferences.getString("uid", "OpenTAK-ICU-" + UUID.randomUUID().toString());
+        /* ATAK Preferences */
+        atak_address = preferences.getString(Preferences.ATAK_SERVER_ADDRESS, Preferences.ATAK_SERVER_ADDRESS_DEFAULT);
+        send_cot = preferences.getBoolean(Preferences.ATAK_SEND_COT, Preferences.ATAK_SEND_COT_DEFAULT);
 
         getResolution();
         prepareEncoders();
@@ -703,7 +712,7 @@ public class CameraService extends Service implements ConnectChecker,
             }
         }
 
-        resolution = resolutions.get(Integer.parseInt(preferences.getString("resolution", "0")));
+        resolution = resolutions.get(Integer.parseInt(preferences.getString(Preferences.VIDEO_RESOLUTION, Preferences.VIDEO_RESOLUTION_DEFAULT)));
         Log.d(LOGTAG, "getResolution ".concat(String.valueOf(resolution.getWidth())).concat(" x ").concat(String.valueOf(resolution.getHeight())));
     }
 

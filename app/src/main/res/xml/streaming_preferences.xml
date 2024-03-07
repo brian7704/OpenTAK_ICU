@@ -11,54 +11,49 @@
             android:entries="@array/protocols"
             android:entryValues="@array/protocols"
             android:key="protocol"
-            android:title="Protocol"
+            android:title="@string/stream_protocol"
             android:dependency="stream_video"/>
-        <SwitchPreference
-            android:defaultValue="false"
-            android:key="multicast"
-            android:title="@string/multicast"
-            android:dependency="stream_video" />
         <EditTextPreference
             android:defaultValue="example.com"
             android:key="address"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Address"
+            android:title="@string/stream_address"
             app:summary="IP address or domain name of the server"
             android:dependency="stream_video" />
         <EditTextPreference
             android:key="port"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Port"
+            android:title="@string/stream_port"
             app:defaultValue="8554"
             android:dependency="stream_video" />
         <EditTextPreference
             android:key="path"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Path"
+            android:title="@string/stream_path"
             android:dependency="stream_video" />
         <EditTextPreference
             android:key="username"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Username"
+            android:title="@string/username"
             android:dependency="stream_video" />
         <EditTextPreference
             android:key="password"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="Password"
+            android:title="@string/password"
             android:dependency="stream_video" />
         <SwitchPreference
             android:defaultValue="true"
             android:key="tcp"
-            android:title="Use TCP"
-            app:summary="Required if the server is behind a firewall or NAT."
+            android:title="@string/tcp"
+            app:summary="@string/stream_tcp_summary"
             android:dependency="stream_video" />
         <SwitchPreference
-            android:defaultValue="true"
+            android:defaultValue="false"
             android:key="self_signed_cert"
             android:title="@string/self_signed_cert"
             app:summary=""

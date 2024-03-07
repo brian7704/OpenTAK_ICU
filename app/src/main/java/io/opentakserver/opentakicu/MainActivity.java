@@ -38,6 +38,7 @@ import com.google.firebase.analytics.FirebaseAnalytics;
 import com.pedro.encoder.input.video.CameraHelper;
 
 import androidx.preference.PreferenceManager;
+import io.opentakserver.opentakicu.contants.Preferences;
 
 import com.pedro.library.view.OpenGlView;
 
@@ -81,7 +82,7 @@ public class MainActivity extends AppCompatActivity
                     bStartStop.setImageResource(R.drawable.stop);
                     lockScreenOrientation();
                 }
-                if (pref.getBoolean("record", false)) {
+                if (pref.getBoolean(Preferences.RECORD_VIDEO, Preferences.RECORD_VIDEO_DEFAULT)) {
                     tvRecording.setText(R.string.yes);
                     tvRecording.setTextColor(Color.GREEN);
                 }
@@ -90,7 +91,7 @@ public class MainActivity extends AppCompatActivity
                 unbindService(mConnection);
                 service_bound = false;
                 unlockScreenOrientation();
-                if (pref.getBoolean("record", false)) {
+                if (pref.getBoolean(Preferences.RECORD_VIDEO, Preferences.RECORD_VIDEO_DEFAULT)) {
                     tvRecording.setText(R.string.no);
                     tvRecording.setTextColor(Color.RED);
                 }
@@ -153,9 +154,9 @@ public class MainActivity extends AppCompatActivity
             mFirebaseAnalytics.logEvent("Start", bundle);
         }
 
-        String uid = pref.getString("uid", null);
+        String uid = pref.getString(Preferences.UID, null);
         if (uid == null)
-            pref.edit().putString("uid", "OpenTAK-ICU-" + UUID.randomUUID().toString()).apply();
+            pref.edit().putString(Preferences.UID, Preferences.UID_DEFAULT).apply();
 
         permissions();
 
@@ -237,7 +238,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void setStatusState() {
-        if (pref.getBoolean("send_cot", false)) {
+        if (pref.getBoolean(Preferences.ATAK_SEND_COT, Preferences.ATAK_SEND_COT_DEFAULT)) {
             tvLocationFix.setText(R.string.not_streaming);
             tvLocationFix.setTextColor(Color.YELLOW);
             tvTakServer.setText(R.string.not_streaming);
@@ -249,10 +250,10 @@ public class MainActivity extends AppCompatActivity
             tvTakServer.setTextColor(Color.YELLOW);
         }
 
-        tvStreamPath.setText(pref.getString("path", ""));
-        tvBitrate.setText(pref.getString("bitrate", "3000") + "kb/s");
+        tvStreamPath.setText(pref.getString(Preferences.STREAM_PATH, Preferences.STREAM_PATH_DEFAULT));
+        tvBitrate.setText(pref.getString(Preferences.VIDEO_BITRATE, Preferences.VIDEO_BITRATE_DEFAULT) + "kb/s");
 
-        if (pref.getBoolean("record", false)) {
+        if (pref.getBoolean(Preferences.RECORD_VIDEO, Preferences.RECORD_VIDEO_DEFAULT)) {
             tvRecording.setText(R.string.not_streaming);
             tvRecording.setTextColor(Color.YELLOW);
         } else {
@@ -353,7 +354,7 @@ public class MainActivity extends AppCompatActivity
                 bindService(new Intent(this, CameraService.class), mConnection, Context.BIND_IMPORTANT);
                 bStartStop.setImageResource(R.drawable.stop);
                 lockScreenOrientation();
-                if (pref.getBoolean("record", false)) {
+                if (pref.getBoolean(Preferences.RECORD_VIDEO, Preferences.RECORD_VIDEO_DEFAULT)) {
                     tvRecording.setText(R.string.yes);
                     tvRecording.setTextColor(Color.GREEN);
                 }

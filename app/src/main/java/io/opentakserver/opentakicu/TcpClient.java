@@ -14,6 +14,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import androidx.annotation.Nullable;
 import androidx.preference.PreferenceManager;
 
+import io.opentakserver.opentakicu.contants.Preferences;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
 import io.opentakserver.opentakicu.cot.Point;
@@ -35,7 +36,6 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.security.KeyStore;
-import java.util.UUID;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -64,8 +64,6 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
     private String atak_client_cert_password;
     private String uid;
     private String path;
-    private String address;
-    private String protocol;
 
     private Socket socket;
     private SSLSocket sslSocket;
@@ -76,8 +74,6 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
     public boolean mRun = false;
     private PrintWriter mBufferOut;
     private BufferedReader mBufferIn;
-
-    private boolean connected = false;
 
     /**
      * Constructor of the class. OnMessagedReceived listens for the messages received from server
@@ -261,21 +257,19 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
     }
 
     private void getSettings() {
-        serverAddress = prefs.getString("atak_address", null);
-        port = Integer.parseInt(prefs.getString("atak_port", "8088"));
-        atak_auth = prefs.getBoolean("atak_auth", false);
-        atak_username = prefs.getString("atak_username", null);
-        atak_password = prefs.getString("atak_password", null);
-        atak_ssl = prefs.getBoolean("atak_ssl", false);
-        atak_ssl_self_signed = prefs.getBoolean("atak_ssl_self_signed", true);
-        atak_trust_store = prefs.getString("trust_store_certificate", null);
-        atak_trust_store_password = prefs.getString("trust_store_cert_password", "atakatak");
-        atak_client_cert = prefs.getString("client_certificate", null);
-        atak_client_cert_password = prefs.getString("client_cert_password", "atakatak");
-        uid = prefs.getString("uid", "OpenTAK-ICU-" + UUID.randomUUID().toString());
-        path = prefs.getString("path", "PATH");
-        protocol = prefs.getString("protocol", "rtsp");
-        address = prefs.getString("address", "192.168.1.10");
+        serverAddress = prefs.getString(Preferences.ATAK_SERVER_ADDRESS, Preferences.ATAK_SERVER_ADDRESS_DEFAULT);
+        port = Integer.parseInt(prefs.getString(Preferences.ATAK_SERVER_PORT, Preferences.ATAK_SERVER_PORT_DEFAULT));
+        atak_auth = prefs.getBoolean(Preferences.ATAK_SERVER_AUTHENTICATION, Preferences.ATAK_SERVER_AUTHENTICATION_DEFAULT);
+        atak_username = prefs.getString(Preferences.ATAK_SERVER_USERNAME, Preferences.ATAK_SERVER_USERNAME_DEFAULT);
+        atak_password = prefs.getString(Preferences.ATAK_SERVER_PASSWORD, Preferences.ATAK_SERVER_PASSWORD_DEFAULT);
+        atak_ssl = prefs.getBoolean(Preferences.ATAK_SERVER_SSL, Preferences.ATAK_SERVER_SSL_DEFAULT);
+        atak_ssl_self_signed = prefs.getBoolean(Preferences.ATAK_SERVER_SELF_SIGNED_CERT, Preferences.ATAK_SERVER_SELF_SIGNED_CERT_DEFAULT);
+        atak_trust_store = prefs.getString(Preferences.ATAK_SERVER_SSL_TRUST_STORE, Preferences.ATAK_SERVER_SSL_TRUST_STORE_DEFAULT);
+        atak_trust_store_password = prefs.getString(Preferences.ATAK_SERVER_SSL_TRUST_STORE_PASSWORD, Preferences.ATAK_SERVER_SSL_TRUST_STORE_PASSWORD_DEFAULT);
+        atak_client_cert = prefs.getString(Preferences.ATAK_SERVER_SSL_CLIENT_CERTIFICATE, Preferences.ATAK_SERVER_SSL_CLIENT_CERTIFICATE_DEFAULT);
+        atak_client_cert_password = prefs.getString(Preferences.ATAK_SERVER_SSL_CLIENT_CERTIFICATE_PASSWORD, Preferences.ATAK_SERVER_SSL_CLIENT_CERTIFICATE_PASSWORD_DEFAULT);
+        uid = prefs.getString(Preferences.UID, Preferences.UID_DEFAULT);
+        path = prefs.getString(Preferences.STREAM_PATH, Preferences.STREAM_PATH_DEFAULT);
     }
 
     @Override
