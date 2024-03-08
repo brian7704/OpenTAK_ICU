@@ -19,6 +19,10 @@ it doesn't support streaming audio or using authentication and encryption (RTSPS
 ## Download
 Get the APK from this repo's [latest release](https://github.com/brian7704/OpenTAK_ICU/releases/latest)
 
+## Documentation
+
+See the full documentation [here](https://docs.opentakserver.io/opentak_icu).
+
 ## Features
 - Video Codecs
   - H264
@@ -46,6 +50,8 @@ is minimized or the screen is off.
 
 ## Planned features
 - KLV
+- Stream your device's screen instead of camera
+- USB camera support
 
 ## Servers
 This app has been developed using [MediaMTX](https://github.com/bluenviron/mediamtx) as the 
@@ -64,19 +70,19 @@ In the video tool, tap the + symbol to add a new stream and use the following se
 ## Viewing the stream in a browser
 When using MediaMTX and streaming with H264, you can watch the live stream in a browser by going to
 
-```http://your_server_ip:8888/stream_path``` 
+`http://your_server_ip:8888/stream_path` 
 
 for an HLS stream or
 
-```http://your_server_ip:8889/stream_path```
+`http://your_server_ip:8889/stream_path`
 
 for a WebRTC stream. Note that most browsers don't yet
 support H265. See [CanIUse](https://caniuse.com/hevc) for details. Also note that WebRTC does not
-support AAC or G711 audio so the stream will show as video only.
+support AAC audio so you will need to use OPUS or G711 if you're viewing the stream via WebRTC.
 
 ## Viewing streams in VLC
 1. Click on Media -> Open Network Stream
-2. In the URL field enter ```rtsp://your_server_address:8554/your_path```
+2. In the URL field enter `rtsp://your_server_address:8554/your_path`
 3. Click Play
 
 ## Adaptive Bitrate

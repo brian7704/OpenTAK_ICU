@@ -95,7 +95,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -320,6 +319,7 @@ public class CameraService extends Service implements ConnectChecker,
 
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, channelId)
                 .setOngoing(true)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(content))
                 .setContentTitle("OpenTAK ICU")
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
@@ -557,12 +557,13 @@ public class CameraService extends Service implements ConnectChecker,
         int width = resolution.getWidth();
         int height = resolution.getHeight();
 
-        if (Objects.equals(codec, VideoCodec.H264.name()))
-            getCamera().setVideoCodec(VideoCodec.H264);
-        else if (Objects.equals(codec, VideoCodec.H265.name()))
+        if (Objects.equals(codec, VideoCodec.H265.name()))
             getCamera().setVideoCodec(VideoCodec.H265);
-        else if (Objects.equals(codec, VideoCodec.AV1.name()))
+        else if (Objects.equals(codec, VideoCodec.AV1.name()) && !protocol.equals("udp") && !protocol.equals("srt"))
             getCamera().setVideoCodec(VideoCodec.AV1);
+        else {
+            getCamera().setVideoCodec(VideoCodec.H264);
+        }
 
         if (Objects.equals(audio_codec, AudioCodec.G711.name()) && !protocol.equals("srt") && !protocol.equals("udp")) {
             getCamera().setAudioCodec(AudioCodec.G711);
@@ -865,8 +866,7 @@ public class CameraService extends Service implements ConnectChecker,
 
                 startRecording();
             } else {
-                Toast.makeText(this, "Error preparing stream, This device cant do it",
-                        Toast.LENGTH_SHORT).show();
+                showNotification(getString(R.string.codec_error));
             }
         }
     }

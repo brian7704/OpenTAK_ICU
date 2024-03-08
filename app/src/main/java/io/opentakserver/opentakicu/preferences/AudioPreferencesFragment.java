@@ -19,6 +19,7 @@ import com.pedro.common.AudioCodec;
 import java.util.ArrayList;
 
 import io.opentakserver.opentakicu.R;
+import io.opentakserver.opentakicu.contants.Preferences;
 
 public class AudioPreferencesFragment extends PreferenceFragmentCompat implements Preference.OnPreferenceClickListener, Preference.OnPreferenceChangeListener {
     private ListPreference sample_rate;
@@ -66,22 +67,18 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
 
     private void setAudioCodecs() {
         ArrayList<String> codecs = new ArrayList<>();
-        codec = findPreference("audio_codec");
-
-        if (prefs.getString("protocol", "rtsp").startsWith("rtsp")) {
+        codec = findPreference(Preferences.AUDIO_CODEC);
+        String protocol = prefs.getString(Preferences.STREAM_PROTOCOL, Preferences.STREAM_PROTOCOL_DEFAULT);
+        if (protocol.startsWith("rtsp")) {
             codecs.add(AudioCodec.OPUS.name());
             codecs.add(AudioCodec.AAC.name());
             codecs.add(AudioCodec.G711.name());
-        } else if (prefs.getString("protocol", "rtsp").startsWith("rtmp")) {
+        } else if (protocol.startsWith("rtmp")) {
             codecs.add(AudioCodec.AAC.name());
             codecs.add(AudioCodec.G711.name());
-        } else if (prefs.getString("protocol", "rtsp").equals("srt")){
+        } else if (protocol.equals("srt") || protocol.equals("udp")){
             codecs.add(AudioCodec.OPUS.name());
             codecs.add(AudioCodec.AAC.name());
-        } else if (prefs.getString("protocol", "rtsp").equals("udp")) {
-            codecs.add(AudioCodec.OPUS.name());
-            codecs.add(AudioCodec.AAC.name());
-            codecs.add(AudioCodec.G711.name());
         }
 
         codec.setEntries(codecs.toArray(new CharSequence[codecs.size()]));
@@ -94,15 +91,15 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
 
         prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
 
-        sample_rate = findPreference("samplerate");
+        sample_rate = findPreference(Preferences.AUDIO_SAMPLE_RATE);
         sample_rate.setOnPreferenceClickListener(this);
-        setSampleRates(prefs.getString("audio_codec", AudioCodec.OPUS.name()));
+        setSampleRates(prefs.getString(Preferences.AUDIO_CODEC, Preferences.AUDIO_CODEC_DEFAULT));
 
         setAudioCodecs();
 
-        findPreference("audio_codec").setOnPreferenceChangeListener(this);
-        stereo = findPreference("stereo");
-        if (prefs.getString("audio_codec", AudioCodec.OPUS.name()).equals(AudioCodec.G711.name())) {
+        findPreference(Preferences.AUDIO_CODEC).setOnPreferenceChangeListener(this);
+        stereo = findPreference(Preferences.STEREO_AUDIO);
+        if (prefs.getString(Preferences.AUDIO_CODEC, Preferences.AUDIO_CODEC_DEFAULT).equals(AudioCodec.G711.name())) {
             sample_rate.setEnabled(false);
             stereo.setEnabled(false);
             stereo.setChecked(false);
@@ -111,8 +108,8 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
 
     @Override
     public boolean onPreferenceClick(@NonNull Preference preference) {
-        if (preference.getKey().equals("samplerate")) {
-            setSampleRates(prefs.getString("audio_codec", AudioCodec.OPUS.name()));
+        if (preference.getKey().equals(Preferences.AUDIO_SAMPLE_RATE)) {
+            setSampleRates(prefs.getString(Preferences.AUDIO_CODEC, Preferences.AUDIO_CODEC_DEFAULT));
             return true;
         }
         return false;
@@ -120,16 +117,16 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
 
     @Override
     public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
-        if (preference.getKey().equals("audio_codec") && newValue.equals(AudioCodec.G711.name())) {
+        if (preference.getKey().equals(Preferences.AUDIO_CODEC) && newValue.equals(AudioCodec.G711.name())) {
             sample_rate.setEnabled(false);
             stereo.setEnabled(false);
             stereo.setChecked(false);
-            prefs.edit().putString("audio_codec", (String) newValue).apply();
-            prefs.edit().putBoolean("stereo", false).apply();
-            prefs.edit().putString("sample_rate", "8000").apply();
+            prefs.edit().putString(Preferences.AUDIO_CODEC, (String) newValue).apply();
+            prefs.edit().putBoolean(Preferences.STEREO_AUDIO, false).apply();
+            prefs.edit().putString(Preferences.AUDIO_SAMPLE_RATE, "8000").apply();
             setSampleRates((String) newValue);
             return true;
-        } else if (preference.getKey().equals("audio_codec")) {
+        } else if (preference.getKey().equals(Preferences.AUDIO_CODEC)) {
             sample_rate.setEnabled(true);
             stereo.setEnabled(true);
             stereo.setChecked(true);
