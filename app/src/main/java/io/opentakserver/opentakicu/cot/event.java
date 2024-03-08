@@ -30,14 +30,11 @@ public class event {
         df.setTimeZone(tz);
 
         start = time = df.format(now);
-        Log.d(LOGTAG, "Start " + start);
-
         // Set stale to 1 day from now
         Calendar c = Calendar.getInstance();
         c.setTime(now);
         c.add(Calendar.DATE, 1);
         stale = df.format(c.getTime());
-        Log.d(LOGTAG, "Stale " + stale);
     }
 
     @JacksonXmlProperty(isAttribute=true)

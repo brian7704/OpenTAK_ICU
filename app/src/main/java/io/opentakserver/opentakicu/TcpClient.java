@@ -191,7 +191,13 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
                 mBufferOut = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
                 mBufferIn = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 context.sendBroadcast(new Intent(TAK_SERVER_CONNECTED).setPackage(context.getPackageName()));
+                Log.d(TAG, "Connected via TCP");
             }
+
+            // Janky way to try to prevent a race condition where we send the initial CoT before the socket is connected
+            Log.d(TAG, "Sleeping");
+            Thread.sleep(1000);
+            Log.d(TAG, "awake");
 
             XmlFactory xmlFactory = XmlFactory.builder()
                     .xmlInputFactory(new WstxInputFactory())
@@ -209,18 +215,16 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
 
             // FTS requires this CoT to be sent before any others
             event event = new event();
-            event.setHow("h-g-i-g-o");
-            event.setType("a-f-G-U-C");
             event.setUid(uid);
 
-            Point point = new Point(0, 0, 0);
+            Point point = new Point(9999999, 9999999, 9999999);
             event.setPoint(point);
 
             Contact contact = new Contact(path);
 
             Takv takv = new Takv(context);
 
-            Detail detail = new Detail(contact, null, null, null, takv, new uid(path));
+            Detail detail = new Detail(contact, null, null, null, takv, new uid(path), null);
             event.setDetail(detail);
 
             sendMessage(xmlMapper.writeValueAsString(event));

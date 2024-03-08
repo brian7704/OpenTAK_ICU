@@ -15,6 +15,7 @@ import io.opentakserver.opentakicu.cot.ConnectionEntry;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
 import io.opentakserver.opentakicu.cot.Device;
+import io.opentakserver.opentakicu.cot.Track;
 import io.opentakserver.opentakicu.cot.feed;
 import io.opentakserver.opentakicu.cot.videoConnections;
 import io.opentakserver.opentakicu.cot.event;
@@ -813,7 +814,7 @@ public class CameraService extends Service implements ConnectChecker,
                         Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
                         Contact contact = new Contact(path);
 
-                        Detail detail = new Detail(contact, __video, device, sensor, null, null);
+                        Detail detail = new Detail(contact, __video, device, sensor, null, null, null);
                         event.setDetail(detail);
 
                         XmlFactory xmlFactory = XmlFactory.builder()
@@ -975,7 +976,7 @@ public class CameraService extends Service implements ConnectChecker,
                 Device device = new Device(rotationInDegrees,0);
                 Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
 
-                Detail detail = new Detail(contact, __video, device, sensor, null, null);
+                Detail detail = new Detail(contact, __video, device, sensor, null, null, new Track(location.getBearing(), location.getSpeed()));
                 event.setDetail(detail);
 
                 XmlFactory xmlFactory = XmlFactory.builder()
