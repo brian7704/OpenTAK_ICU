@@ -155,4 +155,5 @@
     <string name="invalid_ip">Invalid IP Address</string>
     <string name="invalid_multicast_ip_message">Invalid Multicast IP Address</string>
     <string name="codec_error">Failed to start stream. Check the video and audio settings and try again. Not all devices support all codecs.</string>
+    <string name="self_signed_cert_summary">Only available for RTSPS and RTMPS</string>
 </resources>

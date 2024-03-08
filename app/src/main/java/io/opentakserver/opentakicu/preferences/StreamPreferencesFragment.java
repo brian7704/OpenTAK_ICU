@@ -55,8 +55,10 @@ public class StreamPreferencesFragment extends PreferenceFragmentCompat implemen
 
         findPreference(Preferences.STREAM_ADDRESS).setOnPreferenceChangeListener(this);
         findPreference(Preferences.STREAM_PROTOCOL).setOnPreferenceChangeListener(this);
+        findPreference(Preferences.STREAM_SELF_SIGNED_CERT).setOnPreferenceChangeListener(this);
 
         handleTcpSwitch(null);
+        handleSelfSigned(null);
 
         fileBrowserLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -120,9 +122,8 @@ public class StreamPreferencesFragment extends PreferenceFragmentCompat implemen
         }
     }
 
-    private void handleTcpSwitch(String newValue) {
+    private void handleTcpSwitch(String protocol) {
         SwitchPreference tcp = findPreference(Preferences.STREAM_USE_TCP);
-        String protocol = newValue;
         if (protocol == null)
             protocol = pref.getString(Preferences.STREAM_PROTOCOL, Preferences.STREAM_PROTOCOL_DEFAULT);
 
@@ -135,6 +136,14 @@ public class StreamPreferencesFragment extends PreferenceFragmentCompat implemen
             tcp.setChecked(true);
             tcp.setEnabled(false);
         }
+    }
+
+    private void handleSelfSigned(String protocol) {
+        SwitchPreference self_signed = findPreference(Preferences.STREAM_SELF_SIGNED_CERT);
+        if (protocol == null)
+            protocol = pref.getString(Preferences.STREAM_PROTOCOL, Preferences.STREAM_PROTOCOL_DEFAULT);
+
+        self_signed.setEnabled(protocol.equals("rtsps") || protocol.equals("rtmps"));
     }
 
     private void testCert() {
@@ -213,6 +222,7 @@ public class StreamPreferencesFragment extends PreferenceFragmentCompat implemen
             String audio_codec = pref.getString(Preferences.AUDIO_CODEC, Preferences.AUDIO_CODEC_DEFAULT);
             String protocol = (String) newValue;
             handleTcpSwitch(protocol);
+            handleSelfSigned(protocol);
 
             if (Objects.equals(audio_codec, AudioCodec.G711.name()) && !protocol.equals("srt") && !protocol.equals("udp")) {
                 Log.d(LOGTAG, "Audio codec is G711 and protocol is " + protocol);

@@ -56,7 +56,7 @@
             android:defaultValue="false"
             android:key="self_signed_cert"
             android:title="@string/self_signed_cert"
-            app:summary=""
+            app:summary="@string/self_signed_cert_summary"
             android:dependency="stream_video" />
         <Preference
             android:key="certificate"
