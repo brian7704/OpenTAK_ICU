@@ -149,7 +149,9 @@
     <string name="stream_port">Stream Port</string>
     <string name="stream_address">Stream Address</string>
     <string name="stream_protocol">Stream Protocol</string>
-    <string name="stream_tcp_summary">Required if the server is behind a firewall or NAT. Disable for UDP.</string>
+    <string name="stream_tcp_summary">Required if the server is behind a firewall or NAT. Disable for UDP. Only valid if the streaming protocol is RTSP.</string>
     <string name="adaptive_bitrate">Adaptive Bitrate</string>
     <string name="adaptive_bitrate_summary">Changes the bitrate dynamically based on your bandwidth</string>
+    <string name="invalid_ip">Invalid IP Address</string>
+    <string name="invalid_multicast_ip_message">Invalid Multicast IP Address</string>
 </resources>

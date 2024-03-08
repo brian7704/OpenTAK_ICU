@@ -564,15 +564,16 @@ public class CameraService extends Service implements ConnectChecker,
         else if (Objects.equals(codec, VideoCodec.AV1.name()))
             getCamera().setVideoCodec(VideoCodec.AV1);
 
-        if (Objects.equals(audio_codec, AudioCodec.G711.name())) {
+        if (Objects.equals(audio_codec, AudioCodec.G711.name()) && !protocol.equals("srt") && !protocol.equals("udp")) {
             getCamera().setAudioCodec(AudioCodec.G711);
             Log.d(LOGTAG, "Set audio codec to G711");
-        } else if (audio_codec.equals(AudioCodec.AAC.name())) {
-            getCamera().setAudioCodec(AudioCodec.AAC);
-            Log.d(LOGTAG, "Set audio codec to AAC");
-        } else if (audio_codec.equals(AudioCodec.OPUS.name())) {
+        } else if (audio_codec.equals(AudioCodec.OPUS.name()) && !protocol.startsWith("rtmp")) {
             getCamera().setAudioCodec(AudioCodec.OPUS);
             Log.d(LOGTAG, "Set audio codec to OPUS");
+        } else {
+            // Fall back to AAC since all streaming protocol support it
+            getCamera().setAudioCodec(AudioCodec.AAC);
+            Log.d(LOGTAG, "Set audio codec to AAC");
         }
 
         Log.d(LOGTAG, "Setting video bitrate to ".concat(String.valueOf(bitrate)));

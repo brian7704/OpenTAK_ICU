@@ -6,7 +6,10 @@ import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.FileUtils;
+import android.os.NetworkOnMainThreadException;
 import android.util.Log;
+
+import com.pedro.common.AudioCodec;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -23,17 +26,23 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Inet4Address;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.security.KeyStore;
 import java.security.SecureRandom;
+import java.util.Objects;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
+import androidx.preference.SwitchPreference;
+import androidx.preference.SwitchPreferenceCompat;
 import io.opentakserver.opentakicu.R;
+import io.opentakserver.opentakicu.contants.Preferences;
 
-public class StreamPreferencesFragment extends PreferenceFragmentCompat implements Preference.OnPreferenceClickListener {
+public class StreamPreferencesFragment extends PreferenceFragmentCompat implements Preference.OnPreferenceClickListener, Preference.OnPreferenceChangeListener {
     private final static String LOGTAG = "StreamPreferences";
     private ActivityResultLauncher fileBrowserLauncher;
     private SharedPreferences pref;
@@ -43,6 +52,11 @@ public class StreamPreferencesFragment extends PreferenceFragmentCompat implemen
         super.onCreate(savedInstanceState);
 
         pref = PreferenceManager.getDefaultSharedPreferences(getContext());
+
+        findPreference(Preferences.STREAM_ADDRESS).setOnPreferenceChangeListener(this);
+        findPreference(Preferences.STREAM_PROTOCOL).setOnPreferenceChangeListener(this);
+
+        handleTcpSwitch(null);
 
         fileBrowserLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -76,14 +90,14 @@ public class StreamPreferencesFragment extends PreferenceFragmentCompat implemen
     @Override
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         setPreferencesFromResource(R.xml.streaming_preferences, rootKey);
-        findPreference("certificate").setOnPreferenceClickListener(this);
+        findPreference(Preferences.STREAM_CERTIFICATE).setOnPreferenceClickListener(this);
         findPreference("test_certificate").setOnPreferenceClickListener(this);
     }
 
     @Override
     public boolean onPreferenceClick(@NonNull Preference preference) {
-        if (preference.getKey().equals("certificate")) {
-            pref.edit().putString("certificate", null).apply();
+        if (preference.getKey().equals(Preferences.STREAM_CERTIFICATE)) {
+            pref.edit().putString(Preferences.STREAM_CERTIFICATE, null).apply();
             Intent fileBrowserIntent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             fileBrowserIntent.setType("*/*");
             fileBrowserLauncher.launch(fileBrowserIntent);
@@ -106,16 +120,33 @@ public class StreamPreferencesFragment extends PreferenceFragmentCompat implemen
         }
     }
 
+    private void handleTcpSwitch(String newValue) {
+        SwitchPreference tcp = findPreference(Preferences.STREAM_USE_TCP);
+        String protocol = newValue;
+        if (protocol == null)
+            protocol = pref.getString(Preferences.STREAM_PROTOCOL, Preferences.STREAM_PROTOCOL_DEFAULT);
+
+        if (protocol.equals("rtsp")) {
+            tcp.setEnabled(true);
+        } else if (protocol.equals("udp")) {
+            tcp.setChecked(false);
+            tcp.setEnabled(false);
+        } else {
+            tcp.setChecked(true);
+            tcp.setEnabled(false);
+        }
+    }
+
     private void testCert() {
         String certFileString = pref.getString("certificate_temp", null);
-        if (certFileString == null) certFileString = pref.getString("certificate", null);
+        if (certFileString == null) certFileString = pref.getString(Preferences.STREAM_CERTIFICATE, null);
 
-        String certPassword = pref.getString("certificate_password", "");
-
-        Log.d(LOGTAG, certFileString + " " + certPassword);
+        String certPassword = pref.getString(Preferences.STREAM_CERTIFICATE_PASSWORD, Preferences.STREAM_CERTIFICATE_PASSWORD_DEFAULT);
 
         if (certFileString != null) {
             try {
+                Log.d(LOGTAG, certFileString);
+
                 FileInputStream certInputStream = new FileInputStream(certFileString);
 
                 KeyStore keyStore = KeyStore.getInstance("PKCS12");
@@ -131,37 +162,68 @@ public class StreamPreferencesFragment extends PreferenceFragmentCompat implemen
                 File filesDir = getContext().getFilesDir();
                 File dest = new File(filesDir.getAbsolutePath() + "/" + certFile.getName());
 
-                pref.edit().putString("certificate", dest.getAbsolutePath()).apply();
+                pref.edit().putString(Preferences.STREAM_CERTIFICATE, dest.getAbsolutePath()).apply();
                 pref.edit().putString("certificate_temp", null).apply();
 
-                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                builder.setTitle(getString(R.string.success));
-                builder.setMessage(getString(R.string.cert_success));
-                builder.setPositiveButton(R.string.ok, (dialog, which) -> dialog.dismiss());
-                builder.create().show();
+                showNotification(getString(R.string.success), getString(R.string.cert_success));
 
             } catch (Exception e) {
                 Log.e(LOGTAG, e.getMessage());
                 e.printStackTrace();
 
-                pref.edit().putString("certificate", null).apply();
+                pref.edit().putString(Preferences.STREAM_CERTIFICATE, null).apply();
                 pref.edit().putString("certificate_temp", null).apply();
                 new File(certFileString).delete();
 
-                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                builder.setTitle(getString(R.string.failed_to_open_cert));
-                builder.setMessage(e.getMessage());
-                builder.setPositiveButton(R.string.ok, (dialog, which) -> dialog.dismiss());
-                builder.setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
-                builder.create().show();
+                showNotification(getString(R.string.failed_to_open_cert), e.getMessage());
             }
         } else {
-            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-            builder.setTitle(getString(R.string.error));
-            builder.setMessage(getString(R.string.choose_cert));
-            builder.setPositiveButton(R.string.ok, (dialog, which) -> dialog.dismiss());
-            builder.setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss());
-            builder.create().show();
+            showNotification(getString(R.string.error), getString(R.string.choose_cert));
         }
+    }
+
+    private void showNotification(String title, String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        builder.setTitle(title);
+        builder.setMessage(message);
+        builder.setPositiveButton(R.string.ok, (dialog, which) -> dialog.dismiss());
+        builder.create().show();
+    }
+
+    @Override
+    public boolean onPreferenceChange(@NonNull Preference preference, Object newValue) {
+        String key = preference.getKey();
+        Log.d(LOGTAG, "pref change " + key + " " + newValue);
+        if (key != null && key.equals(Preferences.STREAM_ADDRESS) && pref.getString(Preferences.STREAM_PROTOCOL, Preferences.STREAM_PROTOCOL_DEFAULT).equals("udp")) {
+            try {
+                Inet4Address address = (Inet4Address) Inet4Address.getByName((String) newValue);
+                if (!address.isMulticastAddress()) {
+                    Log.e(LOGTAG, "Protocol is UDP but " + address + " is not multicast");
+                    showNotification(getString(R.string.error), getString(R.string.invalid_multicast_ip_message));
+                    return false;
+                }
+            } catch (UnknownHostException|NetworkOnMainThreadException e) {
+                Log.e(LOGTAG, "Invalid IP address", e);
+                showNotification(getString(R.string.error), getString(R.string.invalid_ip));
+                return false;
+            }
+        }
+
+        if (key != null && key.equals(Preferences.STREAM_PROTOCOL)) {
+            String audio_codec = pref.getString(Preferences.AUDIO_CODEC, Preferences.AUDIO_CODEC_DEFAULT);
+            String protocol = (String) newValue;
+            handleTcpSwitch(protocol);
+
+            if (Objects.equals(audio_codec, AudioCodec.G711.name()) && !protocol.equals("srt") && !protocol.equals("udp")) {
+                Log.d(LOGTAG, "Audio codec is G711 and protocol is " + protocol);
+            } else if (audio_codec.equals(AudioCodec.OPUS.name()) && !protocol.startsWith("rtmp")) {
+                Log.d(LOGTAG, "Audio codec is OPUS and protocol is " + protocol);
+            } else {
+                // Fall back to AAC since all streaming protocol support it
+                pref.edit().putString(Preferences.AUDIO_CODEC, AudioCodec.AAC.name()).apply();
+                Log.d(LOGTAG, "Setting audio codec to AAC and protocol is " + protocol);
+            }
+        }
+        return true;
     }
 }
