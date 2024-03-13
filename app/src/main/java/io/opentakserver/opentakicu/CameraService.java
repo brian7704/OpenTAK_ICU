@@ -356,10 +356,12 @@ public class CameraService extends Service implements ConnectChecker,
     }
 
     public void setView(OpenGlView openGlView) {
+        Log.d(LOGTAG, "setView openGlView");
         getCamera().replaceView(openGlView);
     }
 
     public void setView(Context context) {
+        Log.d(LOGTAG, "setView context");
         getCamera().replaceView(context);
     }
 
@@ -787,8 +789,11 @@ public class CameraService extends Service implements ConnectChecker,
                 }
 
                 String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port));
-                if (!protocol.equals("udp"))
+                if (!protocol.equals("udp") && !protocol.equals("srt"))
                     url = url.concat("/").concat(path);
+                else if (protocol.equals("srt")) {
+                    url += "/publish:" + path;
+                }
                 else {
                     try {
                         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
