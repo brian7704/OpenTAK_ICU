@@ -2,7 +2,9 @@ package io.opentakserver.opentakicu;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.BatteryManager;
 import android.util.Log;
 
 import com.ctc.wstx.stax.WstxInputFactory;
@@ -18,6 +20,7 @@ import io.opentakserver.opentakicu.contants.Preferences;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
 import io.opentakserver.opentakicu.cot.Point;
+import io.opentakserver.opentakicu.cot.Status;
 import io.opentakserver.opentakicu.cot.Takv;
 import io.opentakserver.opentakicu.cot.auth;
 import io.opentakserver.opentakicu.cot.Cot;
@@ -68,6 +71,7 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
     private Socket socket;
     private SSLSocket sslSocket;
     private Context context;
+    private Intent batteryStatus;
 
     private String mServerMessage;
     private OnMessageReceived mMessageListener;
@@ -83,6 +87,9 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
         this.serverAddress = serverAddress;
         this.port = port;
         mMessageListener = listener;
+
+        IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        batteryStatus = context.registerReceiver(null, ifilter);
 
         prefs = PreferenceManager.getDefaultSharedPreferences(context);
         getSettings();
@@ -224,7 +231,12 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
 
             Takv takv = new Takv(context);
 
-            Detail detail = new Detail(contact, null, null, null, takv, new uid(path), null);
+            int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+
+            float batteryPct = level * 100 / (float)scale;
+
+            Detail detail = new Detail(contact, null, null, null, takv, new uid(path), null, new Status(batteryPct));
             event.setDetail(detail);
 
             sendMessage(xmlMapper.writeValueAsString(event));

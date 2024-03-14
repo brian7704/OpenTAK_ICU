@@ -15,6 +15,7 @@ import io.opentakserver.opentakicu.cot.ConnectionEntry;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
 import io.opentakserver.opentakicu.cot.Device;
+import io.opentakserver.opentakicu.cot.Status;
 import io.opentakserver.opentakicu.cot.Track;
 import io.opentakserver.opentakicu.cot.feed;
 import io.opentakserver.opentakicu.cot.videoConnections;
@@ -52,6 +53,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
@@ -90,17 +92,14 @@ import com.pedro.library.view.OpenGlView;
 import com.pedro.rtsp.rtsp.Protocol;
 
 import java.io.File;
-import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -164,6 +163,7 @@ public class CameraService extends Service implements ConnectChecker,
     private boolean send_cot = false;
     private String atak_address;
     private long last_fix_time = 0;
+    private Intent batteryStatus;
 
     private SensorManager sensorManager;
     private android.hardware.Sensor magnetometer;
@@ -221,6 +221,9 @@ public class CameraService extends Service implements ConnectChecker,
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         folder = PathUtils.getRecordPath();
+
+        IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        batteryStatus = getApplicationContext().registerReceiver(null, ifilter);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(channelId, LOGTAG, NotificationManager.IMPORTANCE_HIGH);
@@ -848,7 +851,12 @@ public class CameraService extends Service implements ConnectChecker,
                         Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
                         Contact contact = new Contact(path);
 
-                        Detail detail = new Detail(contact, __video, device, sensor, null, null, null);
+                        int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                        int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+
+                        float batteryPct = level * 100 / (float)scale;
+
+                        Detail detail = new Detail(contact, __video, device, sensor, null, null, null, new Status(batteryPct));
                         event.setDetail(detail);
 
                         XmlFactory xmlFactory = XmlFactory.builder()
@@ -987,6 +995,11 @@ public class CameraService extends Service implements ConnectChecker,
                 last_fix_time = System.currentTimeMillis();
                 getApplicationContext().sendBroadcast(new Intent(LOCATION_CHANGE));
 
+                int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+
+                float batteryPct = level * 100 / (float)scale;
+
                 event event = new event();
                 event.setUid(uid);
 
@@ -1009,7 +1022,7 @@ public class CameraService extends Service implements ConnectChecker,
                 Device device = new Device(rotationInDegrees,0);
                 Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
 
-                Detail detail = new Detail(contact, __video, device, sensor, null, null, new Track(location.getBearing(), location.getSpeed()));
+                Detail detail = new Detail(contact, __video, device, sensor, null, null, new Track(location.getBearing(), location.getSpeed()), new Status(batteryPct));
                 event.setDetail(detail);
 
                 XmlFactory xmlFactory = XmlFactory.builder()
