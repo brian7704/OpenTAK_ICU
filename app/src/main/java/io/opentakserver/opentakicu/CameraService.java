@@ -226,7 +226,7 @@ public class CameraService extends Service implements ConnectChecker,
             notificationManager.createNotificationChannel(channel);
         }
 
-        Notification notification = showNotification(getString(R.string.ready_to_stream));
+        Notification notification = showNotification(getString(R.string.ready_to_stream), true);
 
         int type = 0;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -307,7 +307,7 @@ public class CameraService extends Service implements ConnectChecker,
         return new NotificationCompat.Action(R.drawable.stop, getString(R.string.stop_stream), pendingIntent);
     }
 
-    public Notification showNotification(String content) {
+    public Notification showNotification(String content, boolean silent) {
         if (exiting)
             return null;
 
@@ -326,6 +326,7 @@ public class CameraService extends Service implements ConnectChecker,
 
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, channelId)
                 .setOngoing(true)
+                .setSilent(silent)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(content))
                 .setContentTitle("OpenTAK ICU")
                 .setSmallIcon(R.mipmap.ic_launcher)
@@ -769,7 +770,7 @@ public class CameraService extends Service implements ConnectChecker,
                                 folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
                         Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
                     } else {
-                        showNotification(getString(R.string.error_preparing_stream));
+                        showNotification(getString(R.string.error_preparing_stream), false);
                     }
                 } else {
                     getCamera().startRecord(
@@ -905,12 +906,12 @@ public class CameraService extends Service implements ConnectChecker,
                         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
                     }
 
-                    showNotification(getString(R.string.stream_in_progress));
+                    showNotification(getString(R.string.stream_in_progress), true);
                 }
 
                 startRecording();
             } else {
-                showNotification(getString(R.string.codec_error));
+                showNotification(getString(R.string.codec_error), false);
             }
         }
     }
@@ -938,10 +939,10 @@ public class CameraService extends Service implements ConnectChecker,
 
         // Only show the "Ready to Stream" message if there is no error
         if (error != null && broadcastIntent != null) {
-            showNotification(error);
+            showNotification(error, false);
             getApplicationContext().sendBroadcast(new Intent(broadcastIntent));
         } else {
-            showNotification(getString(R.string.ready_to_stream));
+            showNotification(getString(R.string.ready_to_stream), true);
         }
     }
 
@@ -960,7 +961,7 @@ public class CameraService extends Service implements ConnectChecker,
                     if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
                         MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, filename, "image:".concat(filename));
                         getApplicationContext().sendBroadcast(new Intent(TOOK_PICTURE));
-                        showNotification(getString(R.string.saved_photo));
+                        showNotification(getString(R.string.saved_photo), true);
                     } else {
                         boolean savedSuccessfully;
                         OutputStream fos;
@@ -977,15 +978,15 @@ public class CameraService extends Service implements ConnectChecker,
                         fos.close();
 
                         if (savedSuccessfully) {
-                            showNotification(getString(R.string.saved_photo));
+                            showNotification(getString(R.string.saved_photo), true);
                         } else {
                             Log.e(LOGTAG, "Failed to save photo");
-                            showNotification(getString(R.string.saved_photo_failed));
+                            showNotification(getString(R.string.saved_photo_failed), false);
                         }
                     }
                 } catch (NullPointerException | IOException e) {
                     Log.e(LOGTAG, "Failed to save photo: ".concat(e.getMessage()));
-                    showNotification(getString(R.string.saved_photo_failed) + ": " + e.getMessage());
+                    showNotification(getString(R.string.saved_photo_failed) + ": " + e.getMessage(), false);
                 }
             });
         });
