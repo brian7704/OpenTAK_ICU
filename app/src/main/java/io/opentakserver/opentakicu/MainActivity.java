@@ -221,10 +221,8 @@ public class MainActivity extends AppCompatActivity
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
-            Log.d(LOGTAG, "Registered Receiver >= TIRAMISU");
         } else {
             registerReceiver(receiver, intentFilter);
-            Log.d(LOGTAG, "REGGGISTERED RECEIVER < T");
         }
 
         NetworkRequest networkRequest = new NetworkRequest.Builder()
@@ -312,10 +310,12 @@ public class MainActivity extends AppCompatActivity
             default:
                 orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
         }
+        Log.d(LOGTAG, "lockScreenOrientation " + orientation);
         this.setRequestedOrientation(orientation);
     }
 
     private void unlockScreenOrientation() {
+        Log.d(LOGTAG, "unlockScreenOrientation");
         this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
     }
 
@@ -417,7 +417,7 @@ public class MainActivity extends AppCompatActivity
     public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
         Log.d(LOGTAG, "surfaceDestroyed");
         if (camera_service != null) {
-            camera_service.setView(this);
+            camera_service.setView(getApplicationContext());
             camera_service.stopPreview();
         }
     }

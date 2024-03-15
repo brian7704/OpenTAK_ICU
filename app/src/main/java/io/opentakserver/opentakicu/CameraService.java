@@ -15,6 +15,7 @@ import io.opentakserver.opentakicu.cot.ConnectionEntry;
 import io.opentakserver.opentakicu.cot.Contact;
 import io.opentakserver.opentakicu.cot.Detail;
 import io.opentakserver.opentakicu.cot.Device;
+import io.opentakserver.opentakicu.cot.Status;
 import io.opentakserver.opentakicu.cot.Track;
 import io.opentakserver.opentakicu.cot.feed;
 import io.opentakserver.opentakicu.cot.videoConnections;
@@ -48,7 +49,11 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
+import android.media.MediaFormat;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
@@ -74,11 +79,14 @@ import com.pedro.common.ConnectChecker;
 import com.pedro.common.VideoCodec;
 import com.pedro.encoder.input.video.CameraCallbacks;
 import com.pedro.encoder.input.video.CameraHelper;
+import com.pedro.encoder.utils.CodecUtil;
 import com.pedro.library.base.Camera2Base;
+import com.pedro.library.base.recording.BaseRecordController;
 import com.pedro.library.rtmp.RtmpCamera2;
 import com.pedro.library.rtsp.RtspCamera2;
 import com.pedro.library.srt.SrtCamera2;
 import com.pedro.library.udp.UdpCamera2;
+import com.pedro.library.util.AndroidMuxerRecordController;
 import com.pedro.library.util.BitrateAdapter;
 import com.pedro.library.view.OpenGlView;
 import com.pedro.rtsp.rtsp.Protocol;
@@ -92,7 +100,6 @@ import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -706,18 +713,16 @@ public class CameraService extends Service implements ConnectChecker,
 
     private void getResolution() {
         Log.d(LOGTAG, "Get res");
-        ArrayList<Size> resolutions = new ArrayList<>();
 
-        List<Size> frontResolutions = getCamera().getResolutionsFront();
+        ArrayList<Size> resolutions = new ArrayList<>(getCamera().getResolutionsBack());
 
-        // Only get resolutions supported by both cameras
-        for (Size res : getCamera().getResolutionsBack()) {
-            if (frontResolutions.contains(res)) {
-                resolutions.add(res);
-            }
+        String resolution_pref = preferences.getString(Preferences.VIDEO_RESOLUTION, null);
+        if (resolution_pref == null) {
+            // Default to 1080p if no res is selected
+            resolution = new Size(1920, 1080);
+        } else {
+            resolution = resolutions.get(Integer.parseInt(resolution_pref));
         }
-
-        resolution = resolutions.get(Integer.parseInt(preferences.getString(Preferences.VIDEO_RESOLUTION, Preferences.VIDEO_RESOLUTION_DEFAULT)));
         Log.d(LOGTAG, "getResolution ".concat(String.valueOf(resolution.getWidth())).concat(" x ").concat(String.valueOf(resolution.getHeight())));
     }
 
@@ -735,6 +740,27 @@ public class CameraService extends Service implements ConnectChecker,
                     folder.mkdir();
                 }
 
+                if (enable_audio && !audio_codec.equals(AudioCodec.AAC.name())) {
+                    Log.d(LOGTAG, "Trying to record but audio codec is " + audio_codec);
+                    // Recordings only support AAC audio and will fail if any other codec is used.
+                    // This attempts to create a new recording controller using AAC.
+                    // It allows the video to record, but not audio, which is better than no video or audio.
+                    // TODO: Figure out if multiple audio encoders can be used at the same time
+                    AndroidMuxerRecordController androidMuxerRecordController = new AndroidMuxerRecordController();
+                    androidMuxerRecordController.setAudioCodec(AudioCodec.AAC);
+
+                    MediaFormat audioFormat = MediaFormat.createAudioFormat(CodecUtil.AAC_MIME, samplerate, (stereo) ? 2 : 1);
+                    audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, audio_bitrate * 1000);
+                    audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
+                    audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE,
+                            MediaCodecInfo.CodecProfileLevel.AACObjectLC);
+
+                    MediaCodec mediaCodec = MediaCodec.createEncoderByType("audio/mp4a-latm");
+                    mediaCodec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+                    androidMuxerRecordController.setAudioFormat(audioFormat);
+                    getCamera().setRecordController(androidMuxerRecordController);
+                }
+
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
                 currentDateAndTime = sdf.format(new Date());
                 if (!getCamera().isStreaming()) {
@@ -748,13 +774,17 @@ public class CameraService extends Service implements ConnectChecker,
                 } else {
                     getCamera().startRecord(
                             folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
+                    Log.d(LOGTAG, "Recording!");
                     Toast.makeText(this, "Recording... ", Toast.LENGTH_SHORT).show();
                 }
             } catch (IOException e) {
+                Log.e(LOGTAG, "Failed to start recording", e);;
                 getCamera().stopRecord();
                 PathUtils.updateGallery(this, folder.getAbsolutePath().concat("/").concat(currentDateAndTime).concat(".mp4"));
                 Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
             }
+        } else {
+            Log.d(LOGTAG, "recording disabled");
         }
     }
 
@@ -779,6 +809,7 @@ public class CameraService extends Service implements ConnectChecker,
             }
 
             if (getCamera().isRecording() || prepareEncoders()) {
+                Log.d(LOGTAG, "GOT HERE SOMEHOW");
 
                 if (!protocol.equals("srt") && !protocol.startsWith("udp") && !username.isEmpty() && !password.isEmpty()) {
                     try {
@@ -803,7 +834,7 @@ public class CameraService extends Service implements ConnectChecker,
                             return;
                         }
                         _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
-                        Log.d(LOGTAG,  "Requesting Locatiion updates");
+                        Log.d(LOGTAG,  "Requesting Location updates");
                         sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
                         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
 
@@ -821,7 +852,15 @@ public class CameraService extends Service implements ConnectChecker,
                         Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
                         Contact contact = new Contact(path);
 
-                        Detail detail = new Detail(contact, __video, device, sensor, null, null, null);
+                        IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                        Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);
+
+                        int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                        int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+
+                        float batteryPct = level * 100 / (float)scale;
+
+                        Detail detail = new Detail(contact, __video, device, sensor, null, null, null, new Status(batteryPct));
                         event.setDetail(detail);
 
                         XmlFactory xmlFactory = XmlFactory.builder()
@@ -960,6 +999,14 @@ public class CameraService extends Service implements ConnectChecker,
                 last_fix_time = System.currentTimeMillis();
                 getApplicationContext().sendBroadcast(new Intent(LOCATION_CHANGE));
 
+                IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);
+
+                int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+
+                float batteryPct = level * 100 / (float)scale;
+
                 event event = new event();
                 event.setUid(uid);
 
@@ -982,7 +1029,7 @@ public class CameraService extends Service implements ConnectChecker,
                 Device device = new Device(rotationInDegrees,0);
                 Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
 
-                Detail detail = new Detail(contact, __video, device, sensor, null, null, new Track(location.getBearing(), location.getSpeed()));
+                Detail detail = new Detail(contact, __video, device, sensor, null, null, new Track(location.getBearing(), location.getSpeed()), new Status(batteryPct));
                 event.setDetail(detail);
 
                 XmlFactory xmlFactory = XmlFactory.builder()

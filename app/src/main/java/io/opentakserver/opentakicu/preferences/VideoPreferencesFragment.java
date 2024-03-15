@@ -35,18 +35,15 @@ public class VideoPreferencesFragment extends PreferenceFragmentCompat implement
         ArrayList<String> resolutionsList = new ArrayList<>();
         ArrayList<String> resolutionsInts = new ArrayList<>();
         int x = 0;
-        List<Size> frontResolutions = rtspCamera2.getResolutionsFront();
 
         setVideoCodecs();
 
-        // Only get resolutions supported by both cameras
         for (Size res : rtspCamera2.getResolutionsBack()) {
-            if (frontResolutions.contains(res)) {
-                resolutionsList.add(res.getWidth() + " x " + res.getHeight());
-                resolutionsInts.add(String.valueOf(x));
-                x++;
-            }
+            resolutionsList.add(res.getWidth() + " x " + res.getHeight());
+            resolutionsInts.add(String.valueOf(x));
+            x++;
         }
+
         resolutions.setEntries(resolutionsList.toArray(new CharSequence[resolutionsList.size()]));
         resolutions.setEntryValues(resolutionsInts.toArray(new CharSequence[resolutionsInts.size()]));
     }

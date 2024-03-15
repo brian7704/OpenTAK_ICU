@@ -8,8 +8,9 @@ public class Detail {
     Takv takv;
     uid uid;
     Track track;
+    Status status;
 
-    public Detail(Contact contact, __Video __video, Device device, Sensor sensor, Takv takv, uid uid, Track track) {
+    public Detail(Contact contact, __Video __video, Device device, Sensor sensor, Takv takv, uid uid, Track track, Status status) {
         this.contact = contact;
         this.__video = __video;
         this.device = device;
@@ -17,6 +18,7 @@ public class Detail {
         this.takv = takv;
         this.uid = uid;
         this.track = track;
+        this.status = status;
     }
 
     public Contact getContact() {
@@ -74,5 +76,12 @@ public class Detail {
     public void setTrack(Track track) {
         this.track = track;
     }
-}
 
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+}
