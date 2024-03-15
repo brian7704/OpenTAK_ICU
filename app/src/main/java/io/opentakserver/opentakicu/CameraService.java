@@ -163,7 +163,6 @@ public class CameraService extends Service implements ConnectChecker,
     private boolean send_cot = false;
     private String atak_address;
     private long last_fix_time = 0;
-    private Intent batteryStatus;
 
     private SensorManager sensorManager;
     private android.hardware.Sensor magnetometer;
@@ -221,9 +220,6 @@ public class CameraService extends Service implements ConnectChecker,
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         folder = PathUtils.getRecordPath();
-
-        IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        batteryStatus = getApplicationContext().registerReceiver(null, ifilter);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(channelId, LOGTAG, NotificationManager.IMPORTANCE_HIGH);
@@ -833,7 +829,7 @@ public class CameraService extends Service implements ConnectChecker,
                             return;
                         }
                         _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
-                        Log.d(LOGTAG,  "Requesting Locatiion updates");
+                        Log.d(LOGTAG,  "Requesting Location updates");
                         sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
                         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
 
@@ -850,6 +846,9 @@ public class CameraService extends Service implements ConnectChecker,
                         Device device = new Device(rotationInDegrees, 0);
                         Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
                         Contact contact = new Contact(path);
+
+                        IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                        Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);
 
                         int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
                         int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
@@ -994,6 +993,9 @@ public class CameraService extends Service implements ConnectChecker,
             try {
                 last_fix_time = System.currentTimeMillis();
                 getApplicationContext().sendBroadcast(new Intent(LOCATION_CHANGE));
+
+                IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                Intent batteryStatus = getApplicationContext().registerReceiver(null, ifilter);
 
                 int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
                 int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
