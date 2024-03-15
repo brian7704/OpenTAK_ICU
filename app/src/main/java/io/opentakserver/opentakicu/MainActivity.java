@@ -30,6 +30,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -47,7 +48,8 @@ import java.util.ArrayList;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity
-        implements Button.OnClickListener, SurfaceHolder.Callback, View.OnTouchListener {
+        implements Button.OnClickListener, SurfaceHolder.Callback, View.OnTouchListener,
+        SharedPreferences.OnSharedPreferenceChangeListener {
 
     private final String LOGTAG = "MainActivity";
     private final ArrayList<String> PERMISSIONS = new ArrayList<>();
@@ -143,6 +145,7 @@ public class MainActivity extends AppCompatActivity
         Log.d(LOGTAG, "onCreate");
         super.onCreate(savedInstanceState);
         pref = PreferenceManager.getDefaultSharedPreferences(this);
+        pref.registerOnSharedPreferenceChangeListener(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
         pictureButton = findViewById(R.id.pictureButton);
@@ -430,5 +433,10 @@ public class MainActivity extends AppCompatActivity
         camera_service.stopPreview();
         camera_service.prepareEncoders();
         camera_service.startPreview();
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
+        setStatusState();
     }
 }
