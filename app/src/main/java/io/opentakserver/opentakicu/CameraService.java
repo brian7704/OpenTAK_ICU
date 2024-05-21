@@ -81,7 +81,6 @@ import com.pedro.encoder.input.video.CameraCallbacks;
 import com.pedro.encoder.input.video.CameraHelper;
 import com.pedro.encoder.utils.CodecUtil;
 import com.pedro.library.base.Camera2Base;
-import com.pedro.library.base.recording.BaseRecordController;
 import com.pedro.library.rtmp.RtmpCamera2;
 import com.pedro.library.rtsp.RtspCamera2;
 import com.pedro.library.srt.SrtCamera2;
@@ -695,7 +694,6 @@ public class CameraService extends Service implements ConnectChecker,
             rtspCamera2.getStreamClient().setAuthorization(username, password);
         else if (protocol.startsWith("rtmp")) {
             rtmpCamera2.getStreamClient().setAuthorization(username, password);
-            Log.d(LOGTAG, "Set RTMP username and password");
         }
     }
 
@@ -810,18 +808,22 @@ public class CameraService extends Service implements ConnectChecker,
             }
 
             if (getCamera().isRecording() || prepareEncoders()) {
-                Log.d(LOGTAG, "GOT HERE SOMEHOW");
 
                 if (!protocol.equals("srt") && !protocol.startsWith("udp") && !username.isEmpty() && !password.isEmpty()) {
                     try {
                         getCamera().getStreamClient().setAuthorization(username, password);
                     } catch (NotImplementedError e) {
-                        Log.d(LOGTAG, e.getMessage());
+                        Log.e(LOGTAG, e.getMessage());
                     }
                 }
 
                 String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port));
-                if (!protocol.equals("udp") && !protocol.equals("srt"))
+
+                // Support for MediaMTX's way of doing RTMP authentication
+                if (protocol.startsWith("rtmp") && !username.equals(Preferences.STREAM_USERNAME_DEFAULT) && !password.equals(Preferences.STREAM_PASSWORD_DEFAULT)) {
+                    url = url.concat("/").concat(path).concat("?user=").concat(username).concat("&pass=").concat(password);
+                }
+                else if (!protocol.equals("udp") && !protocol.equals("srt"))
                     url = url.concat("/").concat(path);
                 else if (protocol.equals("srt")) {
                     url += "/publish:" + path;
