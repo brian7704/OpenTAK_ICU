@@ -33,7 +33,7 @@ android {
 
     defaultConfig {
         applicationId = "io.opentakserver.opentakicu"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = gitDescribe

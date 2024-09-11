@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 
@@ -55,8 +57,10 @@ public class ATAKPreferencesFragment extends PreferenceFragmentCompat implements
 
                         InputStream certInputStream = getContext().getContentResolver().openInputStream(data.getData());
                         String certFileName = data.getData().getPath().split(":")[1];
+                        Path p = Paths.get(certFileName);
                         File filesDir = getContext().getFilesDir();
-                        File dest = new File(filesDir.getAbsolutePath() + "/" + certFileName);
+                        File dest = new File(filesDir.getAbsolutePath() + "/" + p.getFileName().toString());
+                        Log.d(LOGTAG, dest.getAbsolutePath());
 
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                             FileUtils.copy(certInputStream, Files.newOutputStream(dest.toPath()));
@@ -83,8 +87,9 @@ public class ATAKPreferencesFragment extends PreferenceFragmentCompat implements
 
                             InputStream certInputStream = getContext().getContentResolver().openInputStream(data.getData());
                             String certFileName = data.getData().getPath().split(":")[1];
+                            Path p = Paths.get(certFileName);
                             File filesDir = getContext().getFilesDir();
-                            File dest = new File(filesDir.getAbsolutePath() + "/" + certFileName);
+                            File dest = new File(filesDir.getAbsolutePath() + "/" + p.getFileName().toString());
 
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                                 FileUtils.copy(certInputStream, Files.newOutputStream(dest.toPath()));
