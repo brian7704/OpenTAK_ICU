@@ -624,22 +624,22 @@ public class CameraService extends Service implements ConnectChecker,
         protocol = preferences.getString(Preferences.STREAM_PROTOCOL, Preferences.STREAM_PROTOCOL_DEFAULT);
 
         if (protocol.startsWith("rtmp")) {
-            rtmpCamera2 = new RtmpCamera2(getApplicationContext(), true, this);
+            rtmpCamera2 = new RtmpCamera2(getApplicationContext(), this);
             rtspCamera2 = null;
             srtCamera2 = null;
             udpCamera2 = null;
         } else if (protocol.equals("srt")) {
-            srtCamera2 = new SrtCamera2(getApplicationContext(), true, this);
+            srtCamera2 = new SrtCamera2(getApplicationContext(), this);
             rtspCamera2 = null;
             rtmpCamera2 = null;
             udpCamera2 = null;
         } else if (protocol.startsWith("rtsp")){
-            rtspCamera2 = new RtspCamera2(getApplicationContext(), true, this);
+            rtspCamera2 = new RtspCamera2(getApplicationContext(), this);
             rtmpCamera2 = null;
             srtCamera2 = null;
             udpCamera2 = null;
         } else {
-            udpCamera2 = new UdpCamera2(getApplicationContext(), true, this);
+            udpCamera2 = new UdpCamera2(getApplicationContext(), this);
             rtmpCamera2 = null;
             srtCamera2 = null;
             rtspCamera2 = null;
@@ -707,7 +707,7 @@ public class CameraService extends Service implements ConnectChecker,
         if (udpCamera2 != null)
             return udpCamera2;
 
-        return new RtmpCamera2(getApplicationContext(), true, this);
+        return new RtmpCamera2(getApplicationContext(), this);
     }
 
     private void getResolution() {

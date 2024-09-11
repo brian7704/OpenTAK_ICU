@@ -30,7 +30,7 @@ public class VideoPreferencesFragment extends PreferenceFragmentCompat implement
         setPreferencesFromResource(R.xml.video_settings, rootKey);
         prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
 
-        rtspCamera2 = new RtspCamera2(getActivity(), false, this);
+        rtspCamera2 = new RtspCamera2(getActivity(), this);
         ListPreference resolutions = findPreference(Preferences.VIDEO_RESOLUTION);
         ArrayList<String> resolutionsList = new ArrayList<>();
         ArrayList<String> resolutionsInts = new ArrayList<>();
