@@ -16,15 +16,7 @@ plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
-}
-
-val gitDescribe: String by lazy {
-    val stdout = ByteArrayOutputStream()
-    rootProject.exec {
-        commandLine("git", "describe", "--tags", "--always")
-        standardOutput = stdout
-    }
-    stdout.toString().trim()
+    id("io.github.reactivecircus.app-versioning") version "1.3.2"
 }
 
 android {
@@ -35,8 +27,8 @@ android {
         applicationId = "io.opentakserver.opentakicu"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = gitDescribe
+        //versionCode = 1
+        //versionName = gitDescribe
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
