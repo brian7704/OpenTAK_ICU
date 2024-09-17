@@ -57,6 +57,16 @@
         </activity>
         <activity android:name=".OnBoardingActivity" />
         <activity android:name=".SettingsActivity" />
+
+        <!--Show up in ATAK's plugin list-->
+        <activity
+            android:name="com.atakmap.app.component"
+            android:exported="true"
+            tools:ignore="MissingClass">
+            <intent-filter android:label="@string/app_name">
+                <action android:name="com.atakmap.app.component" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
