@@ -848,8 +848,10 @@ public class CameraService extends Service implements ConnectChecker,
                         Point point = new Point(9999999, 9999999, 9999999);
                         event.setPoint(point);
 
-                        ConnectionEntry connectionEntry = new ConnectionEntry(address, path, uid, port, "", protocol);
-                        connectionEntry.setRtspReliable(null);
+                        ConnectionEntry connectionEntry = new ConnectionEntry(address, path, uid, port, path, protocol);
+                        if(!protocol.equals("rtsp")) {
+                            connectionEntry.setRtspReliable(0);
+                        }
                         __Video __video = new __Video(url, uid, connectionEntry);
                         Device device = new Device(rotationInDegrees, 0);
                         Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
@@ -1022,8 +1024,8 @@ public class CameraService extends Service implements ConnectChecker,
 
                 ConnectionEntry connectionEntry = null;
                 if (protocol.equals("udp")) {
-                    connectionEntry = new ConnectionEntry(address, path, uid, port, "", protocol);
-                    connectionEntry.setRtspReliable(null);
+                    connectionEntry = new ConnectionEntry(address, path, uid, port, path, protocol);
+                    connectionEntry.setRtspReliable(0);
                 } else {
                     url = url.concat("/").concat(path);
                 }
@@ -1043,6 +1045,7 @@ public class CameraService extends Service implements ConnectChecker,
                 XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
                 xmlMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
                 String cot = xmlMapper.writeValueAsString(event);
+
                 if (!protocol.equals("udp") && tcpClient != null)
                     tcpClient.sendMessage(cot);
                 else if (protocol.equals("udp") && multicastClient != null)

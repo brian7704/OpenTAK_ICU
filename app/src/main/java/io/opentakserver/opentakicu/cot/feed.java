@@ -14,6 +14,7 @@ public class feed {
     private int buffer = 0;
     private int timeout = 5000;
     private int rtspReliable = 1;
+    private boolean active;
 
     public feed(String protocol, String alias, String uid, String address, int port, String path) {
         this.protocol = protocol;
@@ -22,6 +23,7 @@ public class feed {
         this.address = address;
         this.port = port;
         this.path = path;
+        this.active = true;
     }
 
     public String getProtocol() {
@@ -127,4 +129,8 @@ public class feed {
     public void setRtspReliable(int rtspReliable) {
         this.rtspReliable = rtspReliable;
     }
+
+    public void setActive(boolean active) { this.active = active; }
+
+    public boolean getActive() { return active; }
 }
