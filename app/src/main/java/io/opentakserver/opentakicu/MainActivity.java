@@ -222,11 +222,11 @@ public class MainActivity extends AppCompatActivity
         intentFilter.addAction(TcpClient.TAK_SERVER_CONNECTED);
         intentFilter.addAction(TcpClient.TAK_SERVER_DISCONNECTED);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
-        } else {
-            registerReceiver(receiver, intentFilter);
-        }
+//        } else {
+//            registerReceiver(receiver, intentFilter);
+//        }
 
         NetworkRequest networkRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
