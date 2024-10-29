@@ -248,11 +248,11 @@ public class CameraService extends Service implements ConnectChecker,
         intentFilter.addAction(STOP_STREAM);
         intentFilter.addAction(EXIT_APP);
 
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
-//        } else {
-//            registerReceiver(receiver, intentFilter);
-//        }
+        } else {
+            registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
+        }
 
         _locListener = new ICULocationListener();
         _locManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
