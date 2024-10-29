@@ -1,4 +1,3 @@
-import java.io.ByteArrayOutputStream
 import java.util.Properties
 import java.io.FileInputStream
 
@@ -28,10 +27,9 @@ android {
         minSdk = 26
         targetSdk = 34
         //versionCode = 1
-        versionName = "1.4.5.1"
+        //versionName = "1.4.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        setProperty("archivesBaseName", "OpenTAK_ICU-$versionName")
     }
 
     packaging {

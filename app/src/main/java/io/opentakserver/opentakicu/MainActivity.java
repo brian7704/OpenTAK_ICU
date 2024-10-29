@@ -1,6 +1,7 @@
 package io.opentakserver.opentakicu;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -23,7 +24,6 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
@@ -45,7 +45,6 @@ import io.opentakserver.opentakicu.contants.Preferences;
 import com.pedro.library.view.OpenGlView;
 
 import java.util.ArrayList;
-import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity
         implements Button.OnClickListener, SurfaceHolder.Callback, View.OnTouchListener,
@@ -91,7 +90,9 @@ public class MainActivity extends AppCompatActivity
                 }
             } else if (action != null && (action.equals(CameraService.STOP_STREAM) || action.equals(CameraService.AUTH_ERROR) || action.equals(CameraService.CONNECTION_FAILED))) {
                 bStartStop.setImageResource(R.drawable.ic_record);
-                unbindService(mConnection);
+                if (service_bound)
+                    unbindService(mConnection);
+
                 service_bound = false;
                 unlockScreenOrientation();
                 if (pref.getBoolean(Preferences.RECORD_VIDEO, Preferences.RECORD_VIDEO_DEFAULT)) {
@@ -140,6 +141,8 @@ public class MainActivity extends AppCompatActivity
     };
 
 
+    //Suppress this warning for Android versions less than 13
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(LOGTAG, "onCreate");
@@ -225,7 +228,7 @@ public class MainActivity extends AppCompatActivity
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
         } else {
-            registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
+            registerReceiver(receiver, intentFilter);
         }
 
         NetworkRequest networkRequest = new NetworkRequest.Builder()

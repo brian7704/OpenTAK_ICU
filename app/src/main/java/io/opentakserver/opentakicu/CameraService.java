@@ -1,5 +1,6 @@
 package io.opentakserver.opentakicu;
 
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -72,6 +73,7 @@ import android.widget.Toast;
 import com.ctc.wstx.stax.WstxInputFactory;
 import com.ctc.wstx.stax.WstxOutputFactory;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.dataformat.xml.XmlFactory;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.pedro.common.AudioCodec;
@@ -160,6 +162,7 @@ public class CameraService extends Service implements ConnectChecker,
     private double verticalFov;
 
     private boolean send_cot = false;
+    private boolean send_stream_details = false;
     private String atak_address;
     private long last_fix_time = 0;
 
@@ -209,6 +212,8 @@ public class CameraService extends Service implements ConnectChecker,
         }
     };
 
+    //Suppress this warning for Android versions less than 13
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
     public void onCreate() {
         super.onCreate();
@@ -251,7 +256,7 @@ public class CameraService extends Service implements ConnectChecker,
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
         } else {
-            registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
+            registerReceiver(receiver, intentFilter);
         }
 
         _locListener = new ICULocationListener();
@@ -686,6 +691,7 @@ public class CameraService extends Service implements ConnectChecker,
         /* ATAK Preferences */
         atak_address = preferences.getString(Preferences.ATAK_SERVER_ADDRESS, Preferences.ATAK_SERVER_ADDRESS_DEFAULT);
         send_cot = preferences.getBoolean(Preferences.ATAK_SEND_COT, Preferences.ATAK_SEND_COT_DEFAULT);
+        send_stream_details = preferences.getBoolean(Preferences.ATAK_SEND_STREAM_DETAILS, Preferences.ATAK_SEND_STREAM_DETAILS_DEFAULT);
 
         getResolution();
         prepareEncoders();
@@ -828,6 +834,7 @@ public class CameraService extends Service implements ConnectChecker,
                 else if (protocol.equals("srt")) {
                     url += "/publish:" + path;
                 }
+                // UDP Multicast
                 else {
                     try {
                         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
@@ -842,6 +849,7 @@ public class CameraService extends Service implements ConnectChecker,
                         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
 
                         multicastClient = new MulticastClient(getApplicationContext());
+
                         event event = new event();
                         event.setUid(uid);
 
@@ -849,9 +857,8 @@ public class CameraService extends Service implements ConnectChecker,
                         event.setPoint(point);
 
                         ConnectionEntry connectionEntry = new ConnectionEntry(address, path, uid, port, path, protocol);
-                        if(!protocol.equals("rtsp")) {
-                            connectionEntry.setRtspReliable(0);
-                        }
+                        connectionEntry.setRtspReliable(0);
+
                         __Video __video = new __Video(url, uid, connectionEntry);
                         Device device = new Device(rotationInDegrees, 0);
                         Sensor sensor = new Sensor(horizonalFov, rotationInDegrees);
@@ -875,8 +882,14 @@ public class CameraService extends Service implements ConnectChecker,
 
                         XmlMapper xmlMapper = XmlMapper.builder(xmlFactory).build();
                         xmlMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
-                        String cot = xmlMapper.writeValueAsString(event);
-                        multicastClient.send_cot(cot);
+
+                        try {
+                            String cot = xmlMapper.writeValueAsString(event);
+                            multicastClient.send_cot(cot);
+                        } catch (JsonProcessingException e) {
+                            Log.d(LOGTAG, "Failed to generate CoT: " + e.getMessage());
+                        }
+
                     } catch (Exception e) {
                         Log.e(LOGTAG, "Failed to send UDP CoT", e);
                     }
@@ -1023,11 +1036,13 @@ public class CameraService extends Service implements ConnectChecker,
                 String url = protocol.concat("://").concat(address).concat(":").concat(String.valueOf(port));
 
                 ConnectionEntry connectionEntry = null;
-                connectionEntry = new ConnectionEntry(address, path, uid, port, path, protocol);
-                if (protocol.equals("udp")) {
-                    connectionEntry.setRtspReliable(0);
-                } else {
-                    url = url.concat("/").concat(path);
+                if (send_stream_details) {
+                    connectionEntry = new ConnectionEntry(address, path, uid, port, path, protocol);
+                    if (protocol.equals("udp")) {
+                        connectionEntry.setRtspReliable(0);
+                    } else {
+                        url = url.concat("/").concat(path);
+                    }
                 }
                 __Video __video = new __Video(url, uid, connectionEntry);
 
