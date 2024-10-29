@@ -225,7 +225,7 @@ public class MainActivity extends AppCompatActivity
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
         } else {
-            registerReceiver(receiver, intentFilter);
+            registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
         }
 
         NetworkRequest networkRequest = new NetworkRequest.Builder()

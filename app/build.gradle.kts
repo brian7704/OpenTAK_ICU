@@ -28,9 +28,10 @@ android {
         minSdk = 26
         targetSdk = 34
         //versionCode = 1
-        //versionName = gitDescribe
+        versionName = "1.4.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        setProperty("archivesBaseName", "OpenTAK_ICU-$versionName")
     }
 
     packaging {
@@ -60,6 +61,7 @@ android {
             isDebuggable = true
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
     }

@@ -12,7 +12,7 @@ public class ConnectionEntry {
     private boolean ignoreEmbeddedKLV = false;
     private String path;
     private String protocol;
-    private Boolean rtspReliable = true;
+    private int rtspReliable = 1;
     private int networkTimeout = 5000;
 
     public ConnectionEntry(String address, String alias, String uid, int port,
@@ -23,6 +23,7 @@ public class ConnectionEntry {
         this.port = port;
         this.path = path;
         this.protocol = protocol;
+        this.rtspReliable = 1;
     }
 
     @JacksonXmlProperty(isAttribute = true)
@@ -107,13 +108,11 @@ public class ConnectionEntry {
     }
 
     @JacksonXmlProperty(isAttribute = true)
-    public Boolean isRtspReliable() {
+    public int getRtspReliable() {
         return rtspReliable;
     }
 
-    public void setRtspReliable(Boolean rtspReliable) {
-        this.rtspReliable = rtspReliable;
-    }
+    public void setRtspReliable(int rtspReliable) { this.rtspReliable = rtspReliable; }
 
     @JacksonXmlProperty(isAttribute = true)
     public int getNetworkTimeout() {

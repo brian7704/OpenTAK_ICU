@@ -33,7 +33,7 @@ public class event {
         // Set stale to 1 day from now
         Calendar c = Calendar.getInstance();
         c.setTime(now);
-        c.add(Calendar.DATE, 1);
+        c.add(Calendar.MINUTE, 10);
         stale = df.format(c.getTime());
     }
 
