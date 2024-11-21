@@ -75,7 +75,7 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.navigation:navigation-fragment:2.8.0")
     implementation("androidx.navigation:navigation-ui:2.8.0")
-    implementation("com.github.pedroSG94.RootEncoder:library:2.5.0")
+    implementation("com.github.pedroSG94.RootEncoder:library:2.5.4")
     implementation("com.github.AppIntro:AppIntro:6.3.1")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("androidx.datastore:datastore-preferences-rxjava3:1.0.0")
