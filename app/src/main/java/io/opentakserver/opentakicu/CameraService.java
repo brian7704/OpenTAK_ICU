@@ -392,6 +392,10 @@ public class CameraService extends Service implements ConnectChecker,
         getCamera().switchCamera();
     }
 
+    public void switchCamera(String cameraId) {
+        getCamera().switchCamera(cameraId);
+    }
+
     public void setZoom(MotionEvent motionEvent) {
         getCamera().setZoom(motionEvent);
     }
@@ -552,9 +556,9 @@ public class CameraService extends Service implements ConnectChecker,
                 sslctx.init(null, trustManagerFactory.getTrustManagers(), new SecureRandom());
 
                 if (rtspCamera2 != null)
-                    rtspCamera2.getStreamClient().addCertificates(trustManagerFactory.getTrustManagers());
+                    rtspCamera2.getStreamClient().addCertificates(trustManagerFactory.getTrustManagers()[0]);
                 else if (rtmpCamera2 != null)
-                    rtmpCamera2.getStreamClient().addCertificates(trustManagerFactory.getTrustManagers());
+                    rtmpCamera2.getStreamClient().addCertificates(trustManagerFactory.getTrustManagers()[0]);
 
             } catch (Exception e) {
                 Log.e(LOGTAG, e.getMessage());
@@ -651,6 +655,10 @@ public class CameraService extends Service implements ConnectChecker,
         }
 
         getCamera().getStreamClient().setLogs(false);
+        for (String camera : getCamera().getCamerasAvailable()) {
+            Log.d(LOGTAG, camera);
+
+        }
 
         /* Stream Preferences */
         stream = preferences.getBoolean(Preferences.STREAM_VIDEO, Preferences.STREAM_VIDEO_DEFAULT);

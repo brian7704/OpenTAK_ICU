@@ -43,8 +43,11 @@ import androidx.preference.PreferenceManager;
 import io.opentakserver.opentakicu.contants.Preferences;
 
 import com.pedro.library.view.OpenGlView;
+import com.topjohnwu.superuser.Shell;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity
         implements Button.OnClickListener, SurfaceHolder.Callback, View.OnTouchListener,
@@ -65,6 +68,12 @@ public class MainActivity extends AppCompatActivity
     private FloatingActionButton pictureButton;
     private FloatingActionButton flashlight;
     private View whiteOverlay;
+    private int currentCameraId = 0;
+    private boolean hasRedLightCamera = false;
+    private boolean redLightEnabled = false;
+    private int redLightCameraId = -1;
+    private boolean isRooted = false;
+    private final ArrayList<String> cameraIds = new ArrayList<>();
 
     private boolean service_bound = false;
     private CameraService camera_service;
@@ -206,6 +215,32 @@ public class MainActivity extends AppCompatActivity
         CameraService.observer.observe(this, cameraService -> {
             Log.d(LOGTAG, "observer");
             camera_service = cameraService;
+
+            cameraIds.addAll(Arrays.asList(camera_service.getCamera().getCamerasAvailable()));
+
+            // Adds the 200 MegaPixel camera on the Ulefone Armor 26 Ultra
+            if (Objects.equals(Build.MODEL, "Armor 26 Ultra"))
+                cameraIds.add("2");
+            else
+                Log.d(LOGTAG, "Device model is " + Build.MODEL);
+
+            redLightCameraId = FeatureSwitcher.getRedLightCamId();
+            if (redLightCameraId != -1) {
+                hasRedLightCamera = true;
+                cameraIds.add(redLightCameraId + "");
+                Log.d(LOGTAG, "This device has a red light camera (" + redLightCameraId + "), checking for root...");
+                isRooted = Shell.getShell().isRoot();
+                Log.d(LOGTAG, "Device rooted: " + isRooted);
+            }
+
+            int wideAngleCamId = FeatureSwitcher.getWideAngleCamId();
+            if (wideAngleCamId != -1) {
+                Log.d(LOGTAG, "This device has a wide angle camera with ID " + wideAngleCamId);
+                cameraIds.add(wideAngleCamId + "");
+            }
+
+            Log.d(LOGTAG, "Got cameraIds " + cameraIds);
+
             if (openGlView.getHolder().getSurface().isValid() && camera_service != null) {
                 camera_service.setView(openGlView);
                 camera_service.startPreview();
@@ -239,7 +274,6 @@ public class MainActivity extends AppCompatActivity
 
         ConnectivityManager connectivityManager = getSystemService(ConnectivityManager.class);
         connectivityManager.requestNetwork(networkRequest, networkCallback);
-
     }
 
     private void setStatusState() {
@@ -374,21 +408,57 @@ public class MainActivity extends AppCompatActivity
                 setStatusState();
             }
         } else if (id == R.id.switch_camera) {
-            camera_service.switchCamera();
+            currentCameraId++;
+            if (currentCameraId > cameraIds.size() - 1) {
+                currentCameraId = 0;
+            }
+            Log.d(LOGTAG, "Switching to camera " + cameraIds.get(currentCameraId));
+            camera_service.switchCamera(cameraIds.get(currentCameraId));
+
         } else if (id == R.id.settingsButton) {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
         } else if (id == R.id.flashlight) {
-            if (camera_service.getCamera().isLanternEnabled()) {
+            if (Objects.equals(camera_service.getCamera().getCurrentCameraId(), redLightCameraId + "")) {
+                toggleRedLights();
+            }
+            else if (camera_service.getCamera().isLanternEnabled()) {
                 flashlight.setImageResource(R.drawable.flashlight_off);
+                camera_service.getCamera().disableLantern();
             } else {
                 flashlight.setImageResource(R.drawable.flashlight_on);
+                try {
+                    camera_service.getCamera().enableLantern();
+                } catch (Exception e) {
+                    Log.d(LOGTAG, "Failed to enable lantern: " + e.getLocalizedMessage());
+                    e.printStackTrace();
+                }
             }
-
-            camera_service.toggleLantern();
         } else if (id == R.id.pictureButton) {
             MainActivity.this.runOnUiThread(() -> whiteOverlay.setVisibility(View.VISIBLE));
             camera_service.take_photo();
+        }
+    }
+
+    private void toggleRedLights() {
+        if (hasRedLightCamera && isRooted && Objects.equals(camera_service.getCamera().getCurrentCameraId(), FeatureSwitcher.getRedLightCamId() + "")) {
+            /*
+                The magic file to toggle the IR LEDs will either be /sys/class/flash_irtouch/flash_irtouch_data/irtouch_value or
+                /sys/class/flashlight_core/flashlight/flashlight_irtorch depending on the device. Running the ls command followed by &&
+                ensures that the echo command will only run if the file actually exists
+             */
+
+            if (redLightEnabled) {
+                Shell.cmd("ls /sys/class/flash_irtouch/flash_irtouch_data/irtouch_value && echo 0 > /sys/class/flash_irtouch/flash_irtouch_data/irtouch_value").exec();
+                Shell.cmd("ls /sys/class/flashlight_core/flashlight/flashlight_irtorch && echo 0 > /sys/class/flashlight_core/flashlight/flashlight_irtorch").exec();
+                redLightEnabled = false;
+                flashlight.setImageResource(R.drawable.flashlight_off);
+            } else {
+                Shell.cmd("ls /sys/class/flash_irtouch/flash_irtouch_data/irtouch_value && echo 1 > /sys/class/flash_irtouch/flash_irtouch_data/irtouch_value").exec();
+                Shell.cmd("ls /sys/class/flashlight_core/flashlight/flashlight_irtorch && echo 1 > /sys/class/flashlight_core/flashlight/flashlight_irtorch").exec();
+                redLightEnabled = true;
+                flashlight.setImageResource(R.drawable.flashlight_on);
+            }
         }
     }
 
