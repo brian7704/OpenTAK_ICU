@@ -408,12 +408,25 @@ public class MainActivity extends AppCompatActivity
                 setStatusState();
             }
         } else if (id == R.id.switch_camera) {
+            // Turn off the IR LEDs if they're on and we're switching away from the IR Camera
+            if (cameraIds.get(currentCameraId).equals(redLightCameraId + "") && redLightEnabled) {
+                toggleRedLights();
+                flashlight.setImageResource(R.drawable.flashlight_off);
+            }
+
+            // Switch the camera
             currentCameraId++;
             if (currentCameraId > cameraIds.size() - 1) {
                 currentCameraId = 0;
             }
             Log.d(LOGTAG, "Switching to camera " + cameraIds.get(currentCameraId));
             camera_service.switchCamera(cameraIds.get(currentCameraId));
+
+            // Turn on the IR LEDs if we're switching to the IR Camera
+            if (cameraIds.get(currentCameraId).equals(redLightCameraId + "")) {
+                toggleRedLights();
+                flashlight.setImageResource(R.drawable.flashlight_on);
+            }
 
         } else if (id == R.id.settingsButton) {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
