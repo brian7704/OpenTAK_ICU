@@ -75,6 +75,7 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.navigation:navigation-fragment:2.8.0")
     implementation("androidx.navigation:navigation-ui:2.8.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
     implementation("com.github.pedroSG94.RootEncoder:library:2.5.4")
     implementation("com.github.AppIntro:AppIntro:6.3.1")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
@@ -91,7 +92,8 @@ dependencies {
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.github.topjohnwu.libsu:core:6.0.0")
     implementation("com.github.topjohnwu.libsu:nio:6.0.0")
-    //implementation("com.serenegiant.uvccamera.libuvccamera:1.2.0")
+
+    implementation("com.github.pedroSG94.RootEncoder:extra-sources:2.5.4")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")

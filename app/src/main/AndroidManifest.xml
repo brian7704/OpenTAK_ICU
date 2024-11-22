@@ -41,7 +41,11 @@
 
         <service
             android:foregroundServiceType="microphone|camera"
-            android:name=".CameraService" />
+            android:name=".Camera2Service" />
+
+        <service
+            android:foregroundServiceType="microphone|camera"
+            android:name=".USBCameraService" />
 
         <activity
             android:name=".MainActivity"

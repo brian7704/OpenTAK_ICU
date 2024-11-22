@@ -101,6 +101,15 @@
         app:layout_constraintRight_toLeftOf="@+id/b_start_stop"
         app:srcCompat="@drawable/camera" />
 
+    <SeekBar
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/zoomControls"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/pictureButton"
+        />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/infoOverlay"
         android:layout_width="150dp"

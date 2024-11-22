@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="video_sources">
+        <item>This Device\'s Cameras</item>
+        <item>This Device\'s Screen</item>
+        <item>USB Camera</item>
+    </string-array>
+
+    <string-array name="video_sources_values">
+        <item>camera2</item>
+        <item>screen</item>
+        <item>usb</item>
+    </string-array>
+
     <string-array name="protocols">
         <item>rtsp</item>
         <item>rtsps</item>

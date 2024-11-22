@@ -3,6 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <PreferenceCategory android:title="Video Settings">
         <ListPreference
+            android:key="video_source"
+            android:title="@string/video_source"
+            android:entries="@array/video_sources"
+            android:entryValues="@array/video_sources_values"
+            />
+        <ListPreference
             android:key="resolution"
             android:title="@string/resolution"
             android:entries="@array/bitrates"
