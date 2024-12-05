@@ -14,13 +14,13 @@ import com.pedro.common.VideoCodec;
 import com.pedro.library.rtsp.RtspCamera2;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import androidx.preference.PreferenceManager;
 import io.opentakserver.opentakicu.R;
 import io.opentakserver.opentakicu.contants.Preferences;
 
-public class VideoPreferencesFragment extends PreferenceFragmentCompat implements ConnectChecker {
+public class VideoPreferencesFragment extends PreferenceFragmentCompat implements ConnectChecker,
+        SharedPreferences.OnSharedPreferenceChangeListener {
 
     private RtspCamera2 rtspCamera2;
     private SharedPreferences prefs;
@@ -29,6 +29,7 @@ public class VideoPreferencesFragment extends PreferenceFragmentCompat implement
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         setPreferencesFromResource(R.xml.video_settings, rootKey);
         prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
 
         rtspCamera2 = new RtspCamera2(getActivity(), this);
         ListPreference resolutions = findPreference(Preferences.VIDEO_RESOLUTION);
@@ -46,6 +47,15 @@ public class VideoPreferencesFragment extends PreferenceFragmentCompat implement
 
         resolutions.setEntries(resolutionsList.toArray(new CharSequence[resolutionsList.size()]));
         resolutions.setEntryValues(resolutionsInts.toArray(new CharSequence[resolutionsInts.size()]));
+
+        String video_source = prefs.getString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_DEFAULT);
+        if (!video_source.equals(Preferences.VIDEO_SOURCE_USB)) {
+            findPreference(Preferences.USB_WIDTH).setEnabled(false);
+            findPreference(Preferences.USB_HEIGHT).setEnabled(false);
+        }
+
+        if (!video_source.equals(Preferences.VIDEO_SOURCE_DEFAULT))
+            findPreference(Preferences.VIDEO_RESOLUTION).setEnabled(false);
     }
 
     private void setVideoCodecs() {
@@ -62,6 +72,20 @@ public class VideoPreferencesFragment extends PreferenceFragmentCompat implement
         ListPreference video_codecs = findPreference(Preferences.VIDEO_CODEC);
         video_codecs.setEntries(codecs.toArray(new CharSequence[codecs.size()]));
         video_codecs.setEntryValues(codecs.toArray(new CharSequence[codecs.size()]));
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
+        String video_source = prefs.getString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_DEFAULT);
+        if (!video_source.equals("usb")) {
+            findPreference(Preferences.USB_WIDTH).setEnabled(false);
+            findPreference(Preferences.USB_HEIGHT).setEnabled(false);
+            findPreference(Preferences.VIDEO_RESOLUTION).setEnabled(true);
+        } else {
+            findPreference(Preferences.USB_WIDTH).setEnabled(true);
+            findPreference(Preferences.USB_HEIGHT).setEnabled(true);
+            findPreference(Preferences.VIDEO_RESOLUTION).setEnabled(false);
+        }
     }
 
     @Override

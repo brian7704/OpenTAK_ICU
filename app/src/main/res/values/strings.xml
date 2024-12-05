@@ -158,4 +158,6 @@
     <string name="self_signed_cert_summary">Only available for RTSPS and RTMPS</string>
     <string name="send_stream_connection_details">Send Stream Connection Details</string>
     <string name="send_stream_connection_details_summary">Broadcasts the stream connection details to other EUDs on the same server. Disable if using OpenTAKServer or viewing video streams on your server requires authentication.</string>
+    <string name="usb_width">USB Camera Resolution Width</string>
+    <string name="usb_height">USB Camera Resolution Height</string>
 </resources>

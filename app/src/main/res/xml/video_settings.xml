@@ -40,4 +40,16 @@
             android:key="record"
             android:title="@string/record_video" />
     </PreferenceCategory>
+    <PreferenceCategory android:title="USB Camera Settings">
+        <EditTextPreference
+            android:key="usb_width"
+            android:defaultValue="1920"
+            android:title="@string/usb_width"
+            android:inputType="number" />
+        <EditTextPreference
+            android:key="usb_height"
+            android:defaultValue="1080"
+            android:title="@string/usb_height"
+            android:inputType="number" />
+    </PreferenceCategory>
 </PreferenceScreen>

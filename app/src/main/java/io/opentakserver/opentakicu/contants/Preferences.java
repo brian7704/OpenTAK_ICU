@@ -46,6 +46,14 @@ public class Preferences {
     public static final String VIDEO_CODEC_DEFAULT = VideoCodec.H264.name();
     public static final String RECORD_VIDEO = "record";
     public static final boolean RECORD_VIDEO_DEFAULT = false;
+    public static final String USB_WIDTH = "usb_width";
+    public static final String USB_WIDTH_DEFAULT = "1920";
+    public static final String USB_HEIGHT = "usb_height";
+    public static final String USB_HEIGHT_DEFAULT = "1080";
+    public static final String VIDEO_SOURCE = "video_source";
+    public static final String VIDEO_SOURCE_DEFAULT = "camera2";
+    public static final String VIDEO_SOURCE_USB = "usb";
+    public static final String VIDEO_SOURCE_SCREEN = "screen";
 
     /* Audio Preferences */
     public static final String ENABLE_AUDIO = "enable_audio";

@@ -2,6 +2,7 @@ package io.opentakserver.opentakicu;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -38,6 +39,7 @@ import androidx.core.app.ActivityCompat;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.BuildConfig;
 import com.google.firebase.analytics.FirebaseAnalytics;
+import com.pedro.common.ConnectChecker;
 import com.pedro.encoder.input.video.CameraHelper;
 
 import androidx.fragment.app.Fragment;
@@ -45,20 +47,18 @@ import androidx.preference.PreferenceManager;
 import io.opentakserver.opentakicu.contants.Preferences;
 
 import com.pedro.library.view.OpenGlView;
-import com.topjohnwu.superuser.Shell;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Objects;
 
 public class Camera2Fragment extends Fragment
         implements Button.OnClickListener, SurfaceHolder.Callback, View.OnTouchListener,
-        SharedPreferences.OnSharedPreferenceChangeListener {
+        SharedPreferences.OnSharedPreferenceChangeListener, ConnectChecker {
 
     private final String LOGTAG = "Camera2Fragment";
     private final ArrayList<String> PERMISSIONS = new ArrayList<>();
     SharedPreferences pref;
 
+    private Activity activity;
     private OpenGlView openGlView;
     private FloatingActionButton bStartStop;
 
@@ -70,12 +70,8 @@ public class Camera2Fragment extends Fragment
     private FloatingActionButton pictureButton;
     private FloatingActionButton flashlight;
     private View whiteOverlay;
-    private int currentCameraId = 0;
-    private boolean hasRedLightCamera = false;
-    private boolean redLightEnabled = false;
-    private int redLightCameraId = -1;
-    private boolean isRooted = false;
-    private final ArrayList<String> cameraIds = new ArrayList<>();
+    private FloatingActionButton videoSourceButton;
+    private FloatingActionButton switchCameraButton;
 
     private boolean service_bound = false;
     private Camera2Service camera_service;
@@ -101,28 +97,31 @@ public class Camera2Fragment extends Fragment
         pictureButton = view.findViewById(R.id.pictureButton);
         pictureButton.setOnClickListener(this);
 
-        openGlView = getActivity().findViewById(R.id.openGlView);
+        openGlView = activity.findViewById(R.id.openGlView);
         openGlView.getHolder().addCallback(this);
         openGlView.setOnTouchListener(this);
 
-        tvBitrate = getActivity().findViewById(R.id.bitrate_value);
-        tvLocationFix = getActivity().findViewById(R.id.location_fix_status);
-        tvStreamPath = getActivity().findViewById(R.id.stream_path_name);
-        tvRecording = getActivity().findViewById(R.id.recording_status);
-        tvTakServer = getActivity().findViewById(R.id.atak_connection_status);
+        tvBitrate = activity.findViewById(R.id.bitrate_value);
+        tvLocationFix = activity.findViewById(R.id.location_fix_status);
+        tvStreamPath = activity.findViewById(R.id.stream_path_name);
+        tvRecording = activity.findViewById(R.id.recording_status);
+        tvTakServer = activity.findViewById(R.id.atak_connection_status);
+
+        videoSourceButton = activity.findViewById(R.id.videoSource);
+        videoSourceButton.setOnClickListener(this);
 
         setStatusState();
 
-        bStartStop = getActivity().findViewById(R.id.b_start_stop);
+        bStartStop = activity.findViewById(R.id.b_start_stop);
         bStartStop.setOnClickListener(this);
-        FloatingActionButton switchCamera = getActivity().findViewById(R.id.switch_camera);
-        switchCamera.setOnClickListener(this);
-        whiteOverlay = getActivity().findViewById(R.id.white_color_overlay);
+        switchCameraButton = activity.findViewById(R.id.switch_camera);
+        switchCameraButton.setOnClickListener(this);
+        whiteOverlay = activity.findViewById(R.id.white_color_overlay);
 
-        flashlight = getActivity().findViewById(R.id.flashlight);
+        flashlight = activity.findViewById(R.id.flashlight);
         flashlight.setOnClickListener(this);
 
-        FloatingActionButton settingsButton = getActivity().findViewById(R.id.settingsButton);
+        FloatingActionButton settingsButton = activity.findViewById(R.id.settingsButton);
         settingsButton.setOnClickListener(this);
 
         IntentFilter intentFilter = new IntentFilter();
@@ -138,52 +137,36 @@ public class Camera2Fragment extends Fragment
         intentFilter.addAction(TcpClient.TAK_SERVER_DISCONNECTED);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            getActivity().registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
+            activity.registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED);
         } else {
-            getActivity().registerReceiver(receiver, intentFilter);
+            activity.registerReceiver(receiver, intentFilter);
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Log.d(LOGTAG, "STARTING SERVICE");
-            getActivity().startForegroundService(new Intent(getActivity(), Camera2Service.class));
+            activity.startForegroundService(new Intent(activity, Camera2Service.class));
         } else {
-            getActivity().startService(new Intent(getActivity(), Camera2Service.class));
+            activity.startService(new Intent(activity, Camera2Service.class));
         }
+
         Camera2Service.observer.observe(getViewLifecycleOwner(), cameraService -> {
             Log.d(LOGTAG, "observer");
             camera_service = cameraService;
 
-            cameraIds.addAll(Arrays.asList(camera_service.getCamera().getCamerasAvailable()));
-
-            // Adds the 200 MegaPixel camera on the Ulefone Armor 26 Ultra
-            if (Objects.equals(Build.MODEL, "Armor 26 Ultra"))
-                cameraIds.add("2");
-            else
-                Log.d(LOGTAG, "Device model is " + Build.MODEL);
-
-            redLightCameraId = FeatureSwitcher.getRedLightCamId();
-            if (redLightCameraId != -1) {
-                hasRedLightCamera = true;
-                cameraIds.add(redLightCameraId + "");
-                Log.d(LOGTAG, "This device has a red light camera (" + redLightCameraId + "), checking for root...");
-                isRooted = Shell.getShell().isRoot();
-                Log.d(LOGTAG, "Device rooted: " + isRooted);
-            }
-
-            int wideAngleCamId = FeatureSwitcher.getWideAngleCamId();
-            if (wideAngleCamId != -1) {
-                Log.d(LOGTAG, "This device has a wide angle camera with ID " + wideAngleCamId);
-                cameraIds.add(wideAngleCamId + "");
-            }
-
-            Log.d(LOGTAG, "Got cameraIds " + cameraIds);
-
-            if (openGlView.getHolder().getSurface().isValid() && camera_service != null && !camera_service.getCamera().isOnPreview()) {
-                camera_service.setView(openGlView);
-                camera_service.startPreview();
+            if (openGlView.getHolder().getSurface().isValid() && camera_service != null) {
+                camera_service.startPreview(openGlView);
                 Log.d(LOGTAG, "Observer started preview");
             }
         });
+    }
+
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        Log.d(LOGTAG, "onAttach");
+
+        if (context instanceof Activity) {
+            activity = (Activity) context;
+        }
     }
 
     final BroadcastReceiver receiver = new BroadcastReceiver() {
@@ -193,10 +176,10 @@ public class Camera2Fragment extends Fragment
             Log.d(LOGTAG, "onReceive " + action);
             if (action != null && action.equals(Camera2Service.EXIT_APP)) {
                 Log.d(LOGTAG, "Exiting app");
-                getActivity().finishAndRemoveTask();
+                activity.finishAndRemoveTask();
             } else if (action != null && action.equals(Camera2Service.START_STREAM)) {
                 if (!service_bound) {
-                    getActivity().bindService(new Intent(getContext(), Camera2Service.class), mConnection, Context.BIND_IMPORTANT);
+                    activity.bindService(new Intent(activity, Camera2Service.class), mConnection, Context.BIND_IMPORTANT);
                     bStartStop.setImageResource(R.drawable.stop);
                     lockScreenOrientation();
                 }
@@ -207,7 +190,7 @@ public class Camera2Fragment extends Fragment
             } else if (action != null && (action.equals(Camera2Service.STOP_STREAM) || action.equals(Camera2Service.AUTH_ERROR) || action.equals(Camera2Service.CONNECTION_FAILED))) {
                 bStartStop.setImageResource(R.drawable.ic_record);
                 if (service_bound)
-                    getActivity().unbindService(mConnection);
+                    activity.unbindService(mConnection);
 
                 service_bound = false;
                 unlockScreenOrientation();
@@ -218,7 +201,7 @@ public class Camera2Fragment extends Fragment
 
                 setStatusState();
             } else if (action != null && action.equals(Camera2Service.TOOK_PICTURE)) {
-                getActivity().runOnUiThread(() -> whiteOverlay.setVisibility(View.INVISIBLE));
+                activity.runOnUiThread(() -> whiteOverlay.setVisibility(View.INVISIBLE));
             } else if (action != null && action.equals(Camera2Service.NEW_BITRATE)) {
                 long bitrate = intent.getLongExtra(Camera2Service.NEW_BITRATE, 0) / 1000;
                 tvBitrate.setText(bitrate + "kb/s");
@@ -246,7 +229,7 @@ public class Camera2Fragment extends Fragment
         public void onLost(@NonNull Network network) {
             super.onLost(network);
             camera_service.stopStream(getString(R.string.network_lost), null);
-            Toast.makeText(getContext(), "Network lost, stream stopping", Toast.LENGTH_LONG).show();
+            Toast.makeText(activity, "Network lost, stream stopping", Toast.LENGTH_LONG).show();
         }
 
         @Override
@@ -263,12 +246,13 @@ public class Camera2Fragment extends Fragment
     public void onCreate(Bundle savedInstanceState) {
         Log.d(LOGTAG, "onCreate");
         super.onCreate(savedInstanceState);
-        pref = PreferenceManager.getDefaultSharedPreferences(getContext());
+        pref = PreferenceManager.getDefaultSharedPreferences(activity);
         pref.registerOnSharedPreferenceChangeListener(this);
-        getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         if (!BuildConfig.DEBUG) {
-            mFirebaseAnalytics = FirebaseAnalytics.getInstance(getContext());
+            mFirebaseAnalytics = FirebaseAnalytics.getInstance(activity);
             Bundle bundle = new Bundle();
             bundle.putString("Activity", "MainActivity");
             mFirebaseAnalytics.logEvent("Start", bundle);
@@ -280,10 +264,10 @@ public class Camera2Fragment extends Fragment
 
         permissions();
 
-        if (!hasPermissions(getContext(), PERMISSIONS)) {
-            Intent intent = new Intent(getContext(), OnBoardingActivity.class);
+        if (!hasPermissions(activity, PERMISSIONS)) {
+            Intent intent = new Intent(activity, OnBoardingActivity.class);
             startActivity(intent);
-            getActivity().finish();
+            activity.finish();
             return;
         }
 
@@ -293,7 +277,7 @@ public class Camera2Fragment extends Fragment
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                 .build();
 
-        ConnectivityManager connectivityManager = getActivity().getSystemService(ConnectivityManager.class);
+        ConnectivityManager connectivityManager = activity.getSystemService(ConnectivityManager.class);
         connectivityManager.requestNetwork(networkRequest, networkCallback);
     }
 
@@ -328,7 +312,7 @@ public class Camera2Fragment extends Fragment
         Log.d(LOGTAG, "onDestroy");
         if (camera_service != null)
             camera_service.stopPreview();
-        getActivity().stopService(new Intent(getContext(), Camera2Service.class));
+        activity.stopService(new Intent(activity, Camera2Service.class));
     }
 
     @Override
@@ -342,6 +326,7 @@ public class Camera2Fragment extends Fragment
     private final ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
             Log.d(LOGTAG, "onServiceConnected");
+            camera_service.startPreview(openGlView);
             service_bound = true;
             bStartStop.setImageResource(R.drawable.stop);
             tvLocationFix.setText(R.string.no);
@@ -358,7 +343,7 @@ public class Camera2Fragment extends Fragment
 
     private void lockScreenOrientation() {
         int orientation;
-        switch (CameraHelper.getCameraOrientation(getContext())) {
+        switch (CameraHelper.getCameraOrientation(activity)) {
             case 90:
                 orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
                 break;
@@ -372,12 +357,12 @@ public class Camera2Fragment extends Fragment
                 orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
         }
         Log.d(LOGTAG, "lockScreenOrientation " + orientation);
-        getActivity().setRequestedOrientation(orientation);
+        activity.setRequestedOrientation(orientation);
     }
 
     private void unlockScreenOrientation() {
         Log.d(LOGTAG, "unlockScreenOrientation");
-        getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
     }
 
     private void permissions() {
@@ -413,7 +398,7 @@ public class Camera2Fragment extends Fragment
         int id = v.getId();
         if (id == R.id.b_start_stop) {
             if (!service_bound) {
-                getActivity().bindService(new Intent(getContext(), Camera2Service.class), mConnection, Context.BIND_IMPORTANT);
+                activity.bindService(new Intent(activity, Camera2Service.class), mConnection, Context.BIND_IMPORTANT);
                 bStartStop.setImageResource(R.drawable.stop);
                 lockScreenOrientation();
                 if (pref.getBoolean(Preferences.RECORD_VIDEO, Preferences.RECORD_VIDEO_DEFAULT)) {
@@ -423,75 +408,37 @@ public class Camera2Fragment extends Fragment
             } else {
                 bStartStop.setImageResource(R.drawable.ic_record);
                 camera_service.stopStream(null, null);
-                getActivity().unbindService(mConnection);
+                activity.unbindService(mConnection);
                 service_bound = false;
                 unlockScreenOrientation();
                 setStatusState();
             }
         } else if (id == R.id.switch_camera) {
-            // Turn off the IR LEDs if they're on and we're switching away from the IR Camera
-            if (cameraIds.get(currentCameraId).equals(redLightCameraId + "") && redLightEnabled) {
-                toggleRedLights();
-                flashlight.setImageResource(R.drawable.flashlight_off);
-            }
-
-            // Switch the camera
-            currentCameraId++;
-            if (currentCameraId > cameraIds.size() - 1) {
-                currentCameraId = 0;
-            }
-            Log.d(LOGTAG, "Switching to camera " + cameraIds.get(currentCameraId));
-            camera_service.switchCamera(cameraIds.get(currentCameraId));
-
-            // Turn on the IR LEDs if we're switching to the IR Camera
-            if (cameraIds.get(currentCameraId).equals(redLightCameraId + "")) {
-                toggleRedLights();
-                flashlight.setImageResource(R.drawable.flashlight_on);
-            }
-
+            camera_service.switchCamera();
+            flashlight.setImageResource(R.drawable.flashlight_off);
         } else if (id == R.id.settingsButton) {
-            Intent intent = new Intent(getContext(), SettingsActivity.class);
+            Intent intent = new Intent(activity, SettingsActivity.class);
             startActivity(intent);
         } else if (id == R.id.flashlight) {
-            if (Objects.equals(camera_service.getCamera().getCurrentCameraId(), redLightCameraId + "")) {
-                toggleRedLights();
-            }
-            else if (camera_service.getCamera().isLanternEnabled()) {
-                flashlight.setImageResource(R.drawable.flashlight_off);
-                camera_service.getCamera().disableLantern();
-            } else {
-                flashlight.setImageResource(R.drawable.flashlight_on);
-                try {
-                    camera_service.getCamera().enableLantern();
-                } catch (Exception e) {
-                    Log.d(LOGTAG, "Failed to enable lantern: " + e.getLocalizedMessage());
-                    e.printStackTrace();
-                }
-            }
+            boolean lanternEnabled = camera_service.toggleLantern();
+
+            if (lanternEnabled) flashlight.setImageResource(R.drawable.flashlight_on);
+            else flashlight.setImageResource(R.drawable.flashlight_off);
+
         } else if (id == R.id.pictureButton) {
-            getActivity().runOnUiThread(() -> whiteOverlay.setVisibility(View.VISIBLE));
+            activity.runOnUiThread(() -> whiteOverlay.setVisibility(View.VISIBLE));
             camera_service.take_photo();
-        }
-    }
+        } else if (id == R.id.videoSource) {
+            if (!camera_service.getStream().isStreaming() && !camera_service.getStream().isRecording()) {
+                if (pref.getString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_DEFAULT).equals(Preferences.VIDEO_SOURCE_USB)) {
+                    pref.edit().putString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_DEFAULT).apply();
+                } else {
+                    pref.edit().putString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_USB).apply();
+                }
 
-    private void toggleRedLights() {
-        if (hasRedLightCamera && isRooted && Objects.equals(camera_service.getCamera().getCurrentCameraId(), FeatureSwitcher.getRedLightCamId() + "")) {
-            /*
-                The magic file to toggle the IR LEDs will either be /sys/class/flash_irtouch/flash_irtouch_data/irtouch_value or
-                /sys/class/flashlight_core/flashlight/flashlight_irtorch depending on the device. Running the ls command followed by &&
-                ensures that the echo command will only run if the file actually exists
-             */
-
-            if (redLightEnabled) {
-                Shell.cmd("ls /sys/class/flash_irtouch/flash_irtouch_data/irtouch_value && echo 0 > /sys/class/flash_irtouch/flash_irtouch_data/irtouch_value").exec();
-                Shell.cmd("ls /sys/class/flashlight_core/flashlight/flashlight_irtorch && echo 0 > /sys/class/flashlight_core/flashlight/flashlight_irtorch").exec();
-                redLightEnabled = false;
                 flashlight.setImageResource(R.drawable.flashlight_off);
             } else {
-                Shell.cmd("ls /sys/class/flash_irtouch/flash_irtouch_data/irtouch_value && echo 1 > /sys/class/flash_irtouch/flash_irtouch_data/irtouch_value").exec();
-                Shell.cmd("ls /sys/class/flashlight_core/flashlight/flashlight_irtorch && echo 1 > /sys/class/flashlight_core/flashlight/flashlight_irtorch").exec();
-                redLightEnabled = true;
-                flashlight.setImageResource(R.drawable.flashlight_on);
+                Toast.makeText(activity, "Can't switch video sources while streaming or recording", Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -511,17 +458,15 @@ public class Camera2Fragment extends Fragment
 
     @Override
     public void surfaceCreated(@NonNull SurfaceHolder surfaceHolder) {
-        Log.d(LOGTAG, "surfacecreated");
+        Log.d(LOGTAG, "surfaceCreated");
     }
 
     @Override
     public void surfaceChanged(@NonNull SurfaceHolder surfaceHolder, int format, int width, int height) {
-        Log.d(LOGTAG, "surfacechanged");
-        if (camera_service != null && !camera_service.getCamera().isOnPreview() && openGlView.getHolder().getSurface().isValid()) {
-            camera_service.setView(openGlView);
-            camera_service.startPreview();
-        } else {
-            Log.d(LOGTAG, "Fuck preview, cam service: " + camera_service + " " + openGlView.getHolder().getSurface().isValid());
+        Log.d(LOGTAG, "surfaceChanged");
+        if (camera_service != null && openGlView.getHolder().getSurface().isValid()) {
+            Log.i(LOGTAG, "surfacechanged starting preview");
+            camera_service.startPreview(openGlView);
         }
     }
 
@@ -529,23 +474,52 @@ public class Camera2Fragment extends Fragment
     public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
         Log.d(LOGTAG, "surfaceDestroyed");
         if (camera_service != null) {
-            camera_service.setView(getContext());
             camera_service.stopPreview();
         }
     }
 
     //Handle screen rotation
     @Override
-    public void onConfigurationChanged(Configuration newConfig) {
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         Log.d(LOGTAG, "onConfigChange " + newConfig);
         camera_service.stopPreview();
         camera_service.prepareEncoders();
-        camera_service.startPreview();
+        camera_service.startPreview(openGlView);
     }
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
         setStatusState();
+    }
+
+    @Override
+    public void onAuthError() {
+
+    }
+
+    @Override
+    public void onConnectionStarted(@NonNull String s) {
+
+    }
+
+    @Override
+    public void onConnectionSuccess() {
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull String s) {
+
+    }
+
+    @Override
+    public void onDisconnect() {
+
+    }
+
+    @Override
+    public void onAuthSuccess() {
+
     }
 }

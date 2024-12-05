@@ -86,6 +86,21 @@
         app:srcCompat="@drawable/settings" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/videoSource"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:useCompatPadding="true"
+        android:clickable="true"
+        android:focusable="true"
+        app:tint="@android:color/white"
+        app:backgroundTint="#00000000"
+        android:elevation="0dp"
+        app:elevation="0dp"
+        app:layout_constraintBottom_toTopOf="@+id/settingsButton"
+        app:layout_constraintStart_toStartOf="@+id/openGlView"
+        app:srcCompat="@drawable/settings" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/pictureButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
