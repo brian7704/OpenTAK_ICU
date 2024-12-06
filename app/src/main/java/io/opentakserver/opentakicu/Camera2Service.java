@@ -659,7 +659,7 @@ public class Camera2Service extends Service implements ConnectChecker,
             bitrateAdapter = new BitrateAdapter(bitrate -> {
                 getStream().setVideoBitrateOnFly(bitrate);
             });
-            bitrateAdapter.setMaxBitrate(bitrate);
+            bitrateAdapter.setMaxBitrate(bitrate * 1024);
         } else {
             Log.d(LOGTAG, "Not doing adaptive bitrate");
         }
@@ -783,12 +783,7 @@ public class Camera2Service extends Service implements ConnectChecker,
         String oldProtocol = protocol;
         protocol = preferences.getString(Preferences.STREAM_PROTOCOL, Preferences.STREAM_PROTOCOL_DEFAULT);
 
-        String oldVideoSource = videoSource;
-        videoSource = preferences.getString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_DEFAULT);
-        Log.d(LOGTAG, "videoSourcePref = " + videoSource);
-
         if (!protocol.equals(oldProtocol)) {
-            Log.d(LOGTAG, "old proto is " + oldProtocol + " new proto is " + protocol);
             if (protocol.startsWith("rtmp")) {
                 rtmpStream = new RtmpStream(getApplicationContext(), this);
                 rtspStream = null;
@@ -853,6 +848,10 @@ public class Camera2Service extends Service implements ConnectChecker,
         send_cot = preferences.getBoolean(Preferences.ATAK_SEND_COT, Preferences.ATAK_SEND_COT_DEFAULT);
         send_stream_details = preferences.getBoolean(Preferences.ATAK_SEND_STREAM_DETAILS, Preferences.ATAK_SEND_STREAM_DETAILS_DEFAULT);
 
+        String oldVideoSource = videoSource;
+        videoSource = preferences.getString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_DEFAULT);
+        Log.d(LOGTAG, "videoSourcePref = " + videoSource);
+
         getResolutions();
         prepareEncoders();
 
@@ -897,8 +896,6 @@ public class Camera2Service extends Service implements ConnectChecker,
                 resolution = resolutions.get(Integer.parseInt(resolution_pref));
             }
             Log.d(LOGTAG, "getResolution ".concat(String.valueOf(resolution.getWidth())).concat(" x ").concat(String.valueOf(resolution.getHeight())));
-        } else {
-            Log.e(LOGTAG, "source is not Cam2 it's " + videoSource);
         }
     }
 
@@ -908,8 +905,6 @@ public class Camera2Service extends Service implements ConnectChecker,
             int height = Integer.parseInt(preferences.getString(Preferences.USB_HEIGHT, Preferences.USB_HEIGHT_DEFAULT));
             resolution = new Size(width, height);
             Log.i(LOGTAG, "Got USB Res " + width + " x " + height);
-        } else {
-            Log.e(LOGTAG, "source isn't USB its " + videoSource);
         }
     }
 
@@ -921,7 +916,8 @@ public class Camera2Service extends Service implements ConnectChecker,
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
         Log.d(LOGTAG, "onSharedPreferenceChanged");
-        getSettings();
+        if (s != null && !s.equals(Preferences.TEXT_OVERLAY))
+            getSettings();
     }
 
     private void startRecording() {
@@ -1030,7 +1026,10 @@ public class Camera2Service extends Service implements ConnectChecker,
                             Toast.makeText(getApplicationContext(), R.string.no_location_permissions, Toast.LENGTH_LONG).show();
                             return;
                         }
-                        _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
+                        if (Build.VERSION.SDK_INT >= 31)
+                            _locManager.requestLocationUpdates(LocationManager.FUSED_PROVIDER, 5000, 0, _locListener);
+                        else
+                            _locManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, _locListener);
                         Log.d(LOGTAG,  "Requesting Location updates");
                         sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME);
                         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);

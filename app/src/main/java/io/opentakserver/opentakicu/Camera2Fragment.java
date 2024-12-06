@@ -23,12 +23,14 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -52,7 +54,7 @@ import java.util.ArrayList;
 
 public class Camera2Fragment extends Fragment
         implements Button.OnClickListener, SurfaceHolder.Callback, View.OnTouchListener,
-        SharedPreferences.OnSharedPreferenceChangeListener, ConnectChecker {
+        SharedPreferences.OnSharedPreferenceChangeListener, ConnectChecker, PopupMenu.OnMenuItemClickListener {
 
     private final String LOGTAG = "Camera2Fragment";
     private final ArrayList<String> PERMISSIONS = new ArrayList<>();
@@ -61,6 +63,8 @@ public class Camera2Fragment extends Fragment
     private Activity activity;
     private OpenGlView openGlView;
     private FloatingActionButton bStartStop;
+    private PopupMenu popupMenu;
+    PopupMenuHandler popupMenuHandler;
 
     private TextView tvBitrate;
     private TextView tvLocationFix;
@@ -124,6 +128,10 @@ public class Camera2Fragment extends Fragment
         FloatingActionButton settingsButton = activity.findViewById(R.id.settingsButton);
         settingsButton.setOnClickListener(this);
 
+        popupMenu = new PopupMenu(activity, videoSourceButton);
+        popupMenu.getMenuInflater().inflate(R.menu.popup_menu, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(this);
+
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(Camera2Service.EXIT_APP);
         intentFilter.addAction(Camera2Service.START_STREAM);
@@ -151,6 +159,7 @@ public class Camera2Fragment extends Fragment
         Camera2Service.observer.observe(getViewLifecycleOwner(), cameraService -> {
             Log.d(LOGTAG, "observer");
             camera_service = cameraService;
+            popupMenuHandler = new PopupMenuHandler(cameraService, getActivity());
 
             if (openGlView.getHolder().getSurface().isValid() && camera_service != null) {
                 camera_service.startPreview(openGlView);
@@ -334,6 +343,8 @@ public class Camera2Fragment extends Fragment
             tvTakServer.setText(R.string.no);
             tvTakServer.setTextColor(Color.RED);
             camera_service.startStream();
+            popupMenuHandler.stopClock();
+            popupMenuHandler.toggleText();
         }
 
         public void onServiceDisconnected(ComponentName className) {
@@ -429,18 +440,13 @@ public class Camera2Fragment extends Fragment
             activity.runOnUiThread(() -> whiteOverlay.setVisibility(View.VISIBLE));
             camera_service.take_photo();
         } else if (id == R.id.videoSource) {
-            if (!camera_service.getStream().isStreaming() && !camera_service.getStream().isRecording()) {
-                if (pref.getString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_DEFAULT).equals(Preferences.VIDEO_SOURCE_USB)) {
-                    pref.edit().putString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_DEFAULT).apply();
-                } else {
-                    pref.edit().putString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_USB).apply();
-                }
-
-                flashlight.setImageResource(R.drawable.flashlight_off);
-            } else {
-                Toast.makeText(activity, "Can't switch video sources while streaming or recording", Toast.LENGTH_LONG).show();
-            }
+            popupMenu.show();
         }
+    }
+
+    @Override
+    public boolean onMenuItemClick(MenuItem menuItem) {
+        return popupMenuHandler.onMenuItemClick(menuItem, flashlight);
     }
 
     @Override
@@ -486,6 +492,11 @@ public class Camera2Fragment extends Fragment
         camera_service.stopPreview();
         camera_service.prepareEncoders();
         camera_service.startPreview(openGlView);
+
+        //When the screen rotates, the timestamp text will disappear but the clock runnable will still run.
+        //This stops the clock if it's running and shows the text again if it's enabled.
+        popupMenuHandler.stopClock();
+        popupMenuHandler.toggleText();
     }
 
     @Override

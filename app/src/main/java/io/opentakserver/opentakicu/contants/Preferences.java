@@ -54,6 +54,8 @@ public class Preferences {
     public static final String VIDEO_SOURCE_DEFAULT = "camera2";
     public static final String VIDEO_SOURCE_USB = "usb";
     public static final String VIDEO_SOURCE_SCREEN = "screen";
+    public static final String TEXT_OVERLAY = "text_overlay";
+    public static final boolean TEXT_OVERLAY_DEFAULT = false;
 
     /* Audio Preferences */
     public static final String ENABLE_AUDIO = "enable_audio";

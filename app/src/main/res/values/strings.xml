@@ -39,11 +39,6 @@
     <string name="microphone">Microphone</string>
     <string name="filters">Filters</string>
     <string name="clear">Clear</string>
-    <string name="grey_scale">Grey scale</string>
-    <string name="negative">Negative</string>
-    <string name="sepia">Sepia</string>
-    <string name="aqua">Aqua</string>
-    <string name="posterize">Posterize</string>
     <!--drawer-->
     <string name="drawer_title">Options</string>
     <string name="protocols">Protocol</string>
@@ -160,4 +155,54 @@
     <string name="send_stream_connection_details_summary">Broadcasts the stream connection details to other EUDs on the same server. Disable if using OpenTAKServer or viewing video streams on your server requires authentication.</string>
     <string name="usb_width">USB Camera Resolution Width</string>
     <string name="usb_height">USB Camera Resolution Height</string>
+
+    <!--filters-->
+    <string name="grey_scale">Grey scale</string>
+    <string name="negative">Negative</string>
+    <string name="noise">Noise</string>
+    <string name="sepia">Sepia</string>
+    <string name="no_filter">No filter</string>
+    <string name="analog_tv">Analog TV</string>
+    <string name="android_view">Android view</string>
+    <string name="basic_deformation">Basic deformation</string>
+    <string name="beauty">Beauty</string>
+    <string name="black">Black</string>
+    <string name="blur">Blur</string>
+    <string name="brightness">Brightness</string>
+    <string name="cartoon">Cartoon</string>
+    <string name="chroma">Chroma</string>
+    <string name="circle">Circle</string>
+    <string name="color">Color</string>
+    <string name="contrast">Contrast</string>
+    <string name="crop">Crop</string>
+    <string name="duotone">Duotone</string>
+    <string name="earlybird">EarlyBird</string>
+    <string name="edge_detection">Edge detection</string>
+    <string name="exposure">Exposure</string>
+    <string name="fire">Fire</string>
+    <string name="gamma">Gamma</string>
+    <string name="glitch">Glitch</string>
+    <string name="gif">Gif</string>
+    <string name="halftone_lines">Halftone lines</string>
+    <string name="image">Image</string>
+    <string name="image_70s">Image 70s</string>
+    <string name="lamoish">Lamoish</string>
+    <string name="money">Money</string>
+    <string name="pixelated">Pixelated</string>
+    <string name="polygonization">Polygonization</string>
+    <string name="rgb_saturate">RGB saturate</string>
+    <string name="ripple">Ripple</string>
+    <string name="rotation">Rotation</string>
+    <string name="saturation">Saturation</string>
+    <string name="surface_filter">Surface filter</string>
+    <string name="rainbow">Rainbow</string>
+    <string name="sharpness">Sharpness</string>
+    <string name="snow">Snow</string>
+    <string name="swirl">Swirl</string>
+    <string name="temperature">Temperature</string>
+    <string name="text">Text</string>
+    <string name="zebra">Zebra</string>
+    <string name="camera_uvc">UVC Camera</string>
+    <string name="text_overlay">Text Overlay</string>
+    <string name="text_overlay_summary">Adds the timestamp and current location info to the video stream</string>
 </resources>

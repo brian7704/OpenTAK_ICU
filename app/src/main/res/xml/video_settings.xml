@@ -39,6 +39,11 @@
             android:defaultValue="false"
             android:key="record"
             android:title="@string/record_video" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="text_overlay"
+            android:title="@string/text_overlay"
+            android:summary="@string/text_overlay_summary" />
     </PreferenceCategory>
     <PreferenceCategory android:title="USB Camera Settings">
         <EditTextPreference
