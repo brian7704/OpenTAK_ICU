@@ -18,8 +18,10 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
+import android.util.Range;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -36,9 +38,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.slider.Slider;
 import com.google.firebase.BuildConfig;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.pedro.common.ConnectChecker;
+import com.pedro.encoder.input.sources.video.Camera2Source;
 import com.pedro.encoder.input.video.CameraHelper;
 
 import androidx.fragment.app.Fragment;
@@ -59,6 +63,7 @@ public class Camera2Fragment extends Fragment
     private FloatingActionButton bStartStop;
     private PopupMenu popupMenu;
     PopupMenuHandler popupMenuHandler;
+    private Handler handler = new Handler();
 
     private TextView tvBitrate;
     private TextView tvLocationFix;
@@ -70,6 +75,7 @@ public class Camera2Fragment extends Fragment
     private View whiteOverlay;
     private FloatingActionButton videoSourceButton;
     private FloatingActionButton switchCameraButton;
+    private Slider zoomSlider;
 
     private boolean service_bound = false;
     private Camera2Service camera_service;
@@ -107,6 +113,10 @@ public class Camera2Fragment extends Fragment
 
         videoSourceButton = activity.findViewById(R.id.videoSource);
         videoSourceButton.setOnClickListener(this);
+
+        zoomSlider = activity.findViewById(R.id.zoom_slider);
+        zoomSlider.setOnTouchListener(this);
+        handler.postDelayed(setZoomSliderVisibility, 3000);
 
         setStatusState();
 
@@ -154,6 +164,7 @@ public class Camera2Fragment extends Fragment
             Log.d(LOGTAG, "observer");
             camera_service = cameraService;
             popupMenuHandler = new PopupMenuHandler(cameraService, getActivity());
+            setZoomRange();
 
             if (openGlView.getHolder().getSurface().isValid() && camera_service != null) {
                 camera_service.startPreview(openGlView);
@@ -275,6 +286,16 @@ public class Camera2Fragment extends Fragment
         connectivityManager.requestNetwork(networkRequest, networkCallback);
     }
 
+    private void setZoomRange() {
+        if (camera_service != null && camera_service.getStream().getVideoSource() instanceof Camera2Source) {
+            Camera2Source camera2Source = (Camera2Source) camera_service.getStream().getVideoSource();
+            Range<Float> zoomRange = camera2Source.getZoomRange();
+            zoomSlider.setValueFrom(zoomRange.getLower());
+            zoomSlider.setValueTo(zoomRange.getUpper());
+            zoomSlider.setValue(zoomRange.getLower());
+        }
+    }
+
     private void setStatusState() {
         if (tvLocationFix == null)
             return;
@@ -366,6 +387,13 @@ public class Camera2Fragment extends Fragment
         activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
     }
 
+    Runnable setZoomSliderVisibility = new Runnable() {
+        @Override
+        public void run() {
+            zoomSlider.animate().alpha(0f);
+        }
+    };
+
     @Override
     public void onClick(View v) {
         int id = v.getId();
@@ -388,6 +416,7 @@ public class Camera2Fragment extends Fragment
             }
         } else if (id == R.id.switch_camera) {
             camera_service.switchCamera();
+            setZoomRange();
             flashlight.setImageResource(R.drawable.flashlight_off);
         } else if (id == R.id.settingsButton) {
             Intent intent = new Intent(activity, SettingsActivity.class);
@@ -414,6 +443,23 @@ public class Camera2Fragment extends Fragment
     @Override
     public boolean onTouch(View view, MotionEvent motionEvent) {
         int action = motionEvent.getAction();
+        if (action == MotionEvent.ACTION_DOWN) {
+            zoomSlider.animate().alpha(1f);
+            handler.removeCallbacks(setZoomSliderVisibility);
+        }
+
+        if (action == MotionEvent.ACTION_UP) {
+            handler.postDelayed(setZoomSliderVisibility, 5000);
+            Log.d(LOGTAG, "ACTION UP");
+        }
+
+        if (view == zoomSlider && camera_service != null) {
+            if (camera_service.getStream().getVideoSource() instanceof Camera2Source) {
+                Camera2Source camera2Source = (Camera2Source) camera_service.getStream().getVideoSource();
+                camera2Source.setZoom(zoomSlider.getValue());
+                return false;
+            }
+        }
         if (motionEvent.getPointerCount() > 1) {
             if (action == MotionEvent.ACTION_MOVE && camera_service != null) {
                 camera_service.setZoom(motionEvent);

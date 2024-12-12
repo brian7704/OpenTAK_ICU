@@ -4,8 +4,17 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:backgroundTint="@color/black"
     tools:openDrawer="start"
     android:id="@+id/activity_custom">
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:visibility="visible"
+        app:layout_constraintGuide_percent="0.75" />
 
     <View
         android:id="@+id/white_color_overlay"
@@ -18,111 +27,127 @@
     <com.pedro.library.view.OpenGlView
         android:id="@+id/openGlView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="@+id/guideline"
+        app:layout_constraintTop_toTopOf="parent"
         app:aspectRatioMode="adjust"
         app:isFlipHorizontal="false"
-        app:isFlipVertical="false"
-        tools:layout_editor_absoluteX="96dp"
-        tools:layout_editor_absoluteY="85dp" />
+        app:isFlipVertical="false" />
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/flashlight"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:clickable="true"
-        android:focusable="true"
-        android:elevation="0dp"
-        app:elevation="0dp"
-        app:tint="@android:color/white"
-        android:backgroundTint="@color/HALF_CLEAR_BLACK"
-        app:layout_constraintBottom_toTopOf="@id/switch_camera"
-        app:layout_constraintEnd_toEndOf="@+id/openGlView"
-        app:useCompatPadding="true"
-        app:srcCompat="@drawable/flashlight_off" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/switch_camera"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:clickable="true"
-        android:focusable="true"
-        android:elevation="0dp"
-        app:elevation="0dp"
-        app:tint="@android:color/white"
-        android:backgroundTint="@color/HALF_CLEAR_BLACK"
-        app:layout_constraintBottom_toTopOf="@id/b_start_stop"
-        app:layout_constraintEnd_toEndOf="@+id/openGlView"
-        app:useCompatPadding="true"
-        app:srcCompat="@drawable/ic_switch_camera" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/b_start_stop"
-        app:tint="#FF0000"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:clickable="true"
-        android:focusable="true"
-        android:elevation="0dp"
-        app:elevation="0dp"
-        android:backgroundTint="@color/HALF_CLEAR_BLACK"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="@+id/openGlView"
-        app:useCompatPadding="true"
-        app:srcCompat="@drawable/ic_record" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/settingsButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:useCompatPadding="true"
-        android:clickable="true"
-        android:focusable="true"
-        android:backgroundTint="@color/HALF_CLEAR_BLACK"
-        app:tint="@android:color/white"
-        android:elevation="0dp"
-        app:elevation="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/openGlView"
-        app:srcCompat="@drawable/settings" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/videoSource"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:useCompatPadding="true"
-        android:clickable="true"
-        android:focusable="true"
-        app:tint="@android:color/white"
-        android:backgroundTint="@color/HALF_CLEAR_BLACK"
-        app:elevation="0dp"
-        app:layout_constraintBottom_toTopOf="@+id/settingsButton"
-        app:layout_constraintStart_toStartOf="@+id/openGlView"
-        app:srcCompat="@drawable/three_dots_vertical" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/pictureButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:useCompatPadding="true"
-        android:clickable="true"
-        android:focusable="true"
-        app:tint="@android:color/white"
-        android:backgroundTint="@color/HALF_CLEAR_BLACK"
-        android:elevation="0dp"
-        app:elevation="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/settingsButton"
-        app:layout_constraintRight_toLeftOf="@+id/b_start_stop"
-        app:srcCompat="@drawable/camera" />
-
-    <SeekBar
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/zoomControls"
+        android:backgroundTint="@color/black"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/pictureButton"
-        />
+        app:layout_constraintTop_toBottomOf="@+id/guideline"
+        app:flow_horizontalAlign="center"
+        app:layout_constraintBottom_toBottomOf="parent">
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/flashlight"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:elevation="0dp"
+            app:borderWidth="2dp"
+            app:elevation="0dp"
+            app:tint="@android:color/white"
+            android:backgroundTint="@color/HALF_CLEAR_BLACK"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/b_start_stop"
+            app:useCompatPadding="true"
+            app:srcCompat="@drawable/flashlight_off" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/switch_camera"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:elevation="0dp"
+            app:elevation="0dp"
+            app:tint="@android:color/white"
+            app:borderWidth="2dp"
+            android:backgroundTint="@color/HALF_CLEAR_BLACK"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/flashlight"
+            app:useCompatPadding="true"
+            app:srcCompat="@drawable/ic_switch_camera" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/b_start_stop"
+            app:tint="#FF0000"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:elevation="0dp"
+            app:elevation="0dp"
+            app:borderWidth="2dp"
+            android:backgroundTint="@color/HALF_CLEAR_BLACK"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:useCompatPadding="true"
+            app:srcCompat="@drawable/ic_record" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/settingsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:useCompatPadding="true"
+            android:clickable="true"
+            android:focusable="true"
+            app:borderWidth="2dp"
+            android:backgroundTint="@color/HALF_CLEAR_BLACK"
+            app:tint="@android:color/white"
+            android:elevation="0dp"
+            app:elevation="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:srcCompat="@drawable/settings" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/videoSource"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:useCompatPadding="true"
+            android:clickable="true"
+            android:focusable="true"
+            app:borderWidth="2dp"
+            app:tint="@android:color/white"
+            android:backgroundTint="@color/HALF_CLEAR_BLACK"
+            app:elevation="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/settingsButton"
+            app:srcCompat="@drawable/three_dots_vertical" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/pictureButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:useCompatPadding="true"
+            android:clickable="true"
+            android:focusable="true"
+            app:borderWidth="2dp"
+            app:tint="@android:color/white"
+            android:backgroundTint="@color/HALF_CLEAR_BLACK"
+            android:elevation="0dp"
+            app:elevation="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toRightOf="@+id/videoSource"
+            app:srcCompat="@drawable/camera" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/zoom_slider"
+            android:layout_width="250dp"
+            android:layout_height="wrap_content"
+            android:animateLayoutChanges="true"
+            app:tickVisible="false"
+            app:layout_constraintBottom_toTopOf="@id/pictureButton"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"/>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/infoOverlay"
