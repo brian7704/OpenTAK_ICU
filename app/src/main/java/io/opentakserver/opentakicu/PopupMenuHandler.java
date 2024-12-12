@@ -127,7 +127,8 @@ public class PopupMenuHandler implements SharedPreferences.OnSharedPreferenceCha
 
         // Filters
         if (item == R.id.no_filter) {
-            camera2Service.getStream().getGlInterface().setFilter(new NoFilterRender());
+            currentFilter = new NoFilterRender();
+            camera2Service.getStream().getGlInterface().setFilter(currentFilter);
             return true;
         }
         if (item == R.id.analog_tv) {

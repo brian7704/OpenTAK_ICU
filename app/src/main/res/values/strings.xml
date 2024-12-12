@@ -205,4 +205,5 @@
     <string name="camera_uvc">UVC Camera</string>
     <string name="text_overlay">Text Overlay</string>
     <string name="text_overlay_summary">Adds the timestamp and current location info to the video stream</string>
+    <string name="this_devices_cameras">This Device\'s Cameras</string>
 </resources>

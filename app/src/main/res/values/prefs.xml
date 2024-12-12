@@ -2,7 +2,7 @@
 <resources>
     <string-array name="video_sources">
         <item>This Device\'s Cameras</item>
-        <item>USB Camera</item>
+        <item>UVC Camera</item>
     </string-array>
 
     <string-array name="video_sources_values">

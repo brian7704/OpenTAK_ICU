@@ -276,6 +276,9 @@ public class Camera2Fragment extends Fragment
     }
 
     private void setStatusState() {
+        if (tvLocationFix == null)
+            return;
+
         if (pref.getBoolean(Preferences.ATAK_SEND_COT, Preferences.ATAK_SEND_COT_DEFAULT)) {
             tvLocationFix.setText(R.string.not_streaming);
             tvLocationFix.setTextColor(Color.YELLOW);
@@ -304,8 +307,10 @@ public class Camera2Fragment extends Fragment
     public void onDestroy() {
         super.onDestroy();
         Log.d(LOGTAG, "onDestroy");
-        if (camera_service != null)
+        if (camera_service != null) {
             camera_service.stopPreview();
+            camera_service.getStream().release();
+        }
         activity.stopService(new Intent(activity, Camera2Service.class));
     }
 

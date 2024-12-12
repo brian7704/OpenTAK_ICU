@@ -3,7 +3,7 @@
     <item android:title="@string/video_source">
         <menu>
             <item
-                android:title="@string/camera2"
+                android:title="@string/this_devices_cameras"
                 android:id="@+id/video_source_camera2"
                 />
             <item

@@ -750,7 +750,8 @@ public class Camera2Service extends Service implements ConnectChecker,
 
         addCert();
 
-        getStream().stopPreview();
+        if (prepareVideo)
+            getStream().stopPreview();
 
         if (videoSource.equals(Preferences.VIDEO_SOURCE_USB)) {
             prepareVideo = getStream().prepareVideo(width, height, bitrate, fps);
