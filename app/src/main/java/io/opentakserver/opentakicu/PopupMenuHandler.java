@@ -387,18 +387,18 @@ public class PopupMenuHandler implements SharedPreferences.OnSharedPreferenceCha
 
             camera2Service.getStream().getGlInterface().addFilter(pathText);
             pathText.setText(pathName, 20f, Color.WHITE, Color.BLACK);
-            pathText.setScale(pathName.length(),  5f);
-            pathText.setPosition(0, 85f);
+            pathText.setScale(Math.round(pathName.length() * getAspectRatio()), getVerticalScale());
+            pathText.setPosition(0, 100 - (getVerticalScale() * 3));
 
             camera2Service.getStream().getGlInterface().addFilter(locationText);
             locationText.setText("0, 0", 20f, Color.WHITE, Color.BLACK);
-            locationText.setScale(4f, 5f);
-            locationText.setPosition(0, 90f);
+            locationText.setScale(4f, getVerticalScale());
+            locationText.setPosition(0, 100 - (getVerticalScale() * 2));
 
             camera2Service.getStream().getGlInterface().addFilter(timestamp);
             String text = getTime();
             timestamp.setText(text, 20f, Color.WHITE, Color.BLACK);
-            timestamp.setScale(text.length(),5f);
+            timestamp.setScale(Math.round(text.length() * getAspectRatio()),getVerticalScale());
             timestamp.setPosition(TranslateTo.BOTTOM_LEFT);
 
             clock.run();
@@ -416,10 +416,32 @@ public class PopupMenuHandler implements SharedPreferences.OnSharedPreferenceCha
         public void run() {
             String time = getTime();
             timestamp.setText(time, 20f, Color.WHITE, Color.BLACK);
-            timestamp.setScale(time.length(), 5f);
+            timestamp.setScale(Math.round(time.length() * getAspectRatio()), getVerticalScale());
             handler.postDelayed(this, 1000);
         }
     };
+
+    // Calculate the stream's aspect ratio in order to correctly set the text overlay width
+    public float getAspectRatio() {
+        int rotation = camera2Service.getStream().getVideoSource().getRotation();
+        //Don't horizontally scale the text in landscape mode
+        if (rotation == 0 || rotation == 180)
+            return 1;
+
+        int width = camera2Service.getStream().getVideoSource().getWidth();
+        int height = camera2Service.getStream().getVideoSource().getHeight();
+        return (float) width / height;
+    }
+
+    // Changes the text overlay's height based on screen orientation
+    public float getVerticalScale() {
+        int rotation = camera2Service.getStream().getVideoSource().getRotation();
+        float scaleY = 3f;
+        if (rotation == 0 || rotation == 180)
+            scaleY = 5f;
+
+        return scaleY;
+    }
 
     public static String getTime() {
         TimeZone tz = TimeZone.getTimeZone("UTC");
@@ -440,7 +462,7 @@ public class PopupMenuHandler implements SharedPreferences.OnSharedPreferenceCha
     public void onLocationChanged(@NonNull Location location) {
         String text = location.getLatitude() + ", " + location.getLongitude() + ", " + location.getBearing() + "°";
         locationText.setText(text, 20f, Color.WHITE, Color.BLACK);
-        locationText.setScale(text.length(), 5f);
-        locationText.setPosition(0, 90f);
+        locationText.setScale(Math.round(text.length() * getAspectRatio()), getVerticalScale());
+        locationText.setPosition(0, 100 - (getVerticalScale() * 2));
     }
 }

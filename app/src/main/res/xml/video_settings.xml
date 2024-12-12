@@ -25,7 +25,7 @@
             android:title="@string/adaptive_bitrate"
             app:summary="@string/adaptive_bitrate_summary" />
         <ListPreference
-            android:defaultValue="1"
+            android:defaultValue="30"
             android:entries="@array/fps"
             android:entryValues="@array/fps"
             android:key="fps"
