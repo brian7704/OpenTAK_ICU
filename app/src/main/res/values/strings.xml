@@ -170,7 +170,7 @@
     <string name="blur">Blur</string>
     <string name="brightness">Brightness</string>
     <string name="cartoon">Cartoon</string>
-    <string name="chroma">Chroma</string>
+    <string name="chroma">Chroma Key</string>
     <string name="circle">Circle</string>
     <string name="color">Color</string>
     <string name="contrast">Contrast</string>
@@ -206,4 +206,8 @@
     <string name="text_overlay">Text Overlay</string>
     <string name="text_overlay_summary">Adds the timestamp and current location info to the video stream</string>
     <string name="this_devices_cameras">This Device\'s Cameras</string>
+    <string name="text_overlay_timezone">Text Overlay Time Zone</string>
+    <string name="text_overlay_timezone_summary">Enable for UTC, disable for local time zone</string>
+    <string name="chroma_filter_background">Chroma Backgroud</string>
+    <string name="chroma_filter_background_summary">Background image for use with the chroma key filter. Requires a bright green background.</string>
 </resources>

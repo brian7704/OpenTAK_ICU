@@ -62,6 +62,7 @@ import com.pedro.encoder.utils.gl.TranslateTo;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
@@ -77,7 +78,8 @@ public class PopupMenuHandler implements SharedPreferences.OnSharedPreferenceCha
     private TextObjectFilterRender timestamp = new TextObjectFilterRender();
     private TextObjectFilterRender locationText = new TextObjectFilterRender();
     private Handler handler = new Handler(Looper.getMainLooper());
-    private boolean showText = false;
+    private boolean showText = Preferences.TEXT_OVERLAY_DEFAULT;
+    private boolean timestampTimeZone = Preferences.TEXT_OVERLAY_TIMEZONE_DEFAULT;
     SharedPreferences pref;
     private Camera2Service camera2Service;
     private String pathName;
@@ -92,6 +94,7 @@ public class PopupMenuHandler implements SharedPreferences.OnSharedPreferenceCha
         pref.registerOnSharedPreferenceChangeListener(this);
         pathName = pref.getString(Preferences.STREAM_PATH, "my_path");
         showText = pref.getBoolean(Preferences.TEXT_OVERLAY, Preferences.TEXT_OVERLAY_DEFAULT);
+        timestampTimeZone = pref.getBoolean(Preferences.TEXT_OVERLAY_TIMEZONE, Preferences.TEXT_OVERLAY_TIMEZONE_DEFAULT);
         locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         //Add NoFilterRender as the first element in the filter list. Prevents setFilter() from replacing the text overlay
         camera2Service.getStream().getGlInterface().addFilter(currentFilter);
@@ -168,10 +171,22 @@ public class PopupMenuHandler implements SharedPreferences.OnSharedPreferenceCha
             return true;
         }
         if (item == R.id.chroma) {
-            //TODO: Let the user choose a background
             ChromaFilterRender chromaFilterRender = new ChromaFilterRender();
+            chromaFilterRender.setSensitive(1f);
+
             camera2Service.getStream().getGlInterface().setFilter(chromaFilterRender);
-            chromaFilterRender.setImage(BitmapFactory.decodeResource(context.getResources(), R.drawable.bg_chroma));
+            String chromaBg = pref.getString(Preferences.CHROMA_KEY_BACKGROUND, Preferences.CHROMA_KEY_BACKGROUND_DEFAULT);
+            if (chromaBg == null)
+                chromaFilterRender.setImage(BitmapFactory.decodeResource(context.getResources(), R.drawable.bg_chroma));
+            else {
+                try {
+                    Log.d(LOGTAG, "Setting chroma key background to " + chromaBg);
+                    chromaFilterRender.setImage(BitmapFactory.decodeFile(chromaBg));
+                } catch (Exception e) {
+                    Log.d(LOGTAG, "Failed to get chroma key background, using default: " + chromaBg);
+                    chromaFilterRender.setImage(BitmapFactory.decodeResource(context.getResources(), R.drawable.bg_chroma));
+                }
+            }
             currentFilter = chromaFilterRender;
             return true;
         }
@@ -443,17 +458,27 @@ public class PopupMenuHandler implements SharedPreferences.OnSharedPreferenceCha
         return scaleY;
     }
 
-    public static String getTime() {
-        TimeZone tz = TimeZone.getTimeZone("UTC");
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+    public String getTime() {
+        TimeZone tz;
+        DateFormat df;
+
+        if (timestampTimeZone) {
+            tz = TimeZone.getTimeZone("UTC");
+        } else {
+            Calendar currentTime = Calendar.getInstance();
+            tz = currentTime.getTimeZone();
+        }
+
+        df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX");
         df.setTimeZone(tz);
         return  df.format(new Date());
     }
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
-        if (s != null && s.equals(Preferences.TEXT_OVERLAY)) {
-            showText = sharedPreferences.getBoolean(s, false);
+        if (s != null && (s.equals(Preferences.TEXT_OVERLAY) || s.equals(Preferences.TEXT_OVERLAY_TIMEZONE))) {
+            showText = sharedPreferences.getBoolean(s, Preferences.TEXT_OVERLAY_DEFAULT);
+            timestampTimeZone = sharedPreferences.getBoolean(Preferences.TEXT_OVERLAY_TIMEZONE, Preferences.TEXT_OVERLAY_TIMEZONE_DEFAULT);
             toggleText();
         }
     }

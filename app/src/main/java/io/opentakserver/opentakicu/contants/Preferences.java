@@ -56,6 +56,10 @@ public class Preferences {
     public static final String VIDEO_SOURCE_SCREEN = "screen";
     public static final String TEXT_OVERLAY = "text_overlay";
     public static final boolean TEXT_OVERLAY_DEFAULT = false;
+    public static final String TEXT_OVERLAY_TIMEZONE = "text_overlay_timezone";
+    public static final boolean TEXT_OVERLAY_TIMEZONE_DEFAULT = true;
+    public static final String CHROMA_KEY_BACKGROUND = "chroma_bg";
+    public static final String CHROMA_KEY_BACKGROUND_DEFAULT = null;
 
     /* Audio Preferences */
     public static final String ENABLE_AUDIO = "enable_audio";

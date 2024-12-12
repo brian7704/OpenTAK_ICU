@@ -39,11 +39,6 @@
             android:defaultValue="false"
             android:key="record"
             android:title="@string/record_video" />
-        <SwitchPreference
-            android:defaultValue="false"
-            android:key="text_overlay"
-            android:title="@string/text_overlay"
-            android:summary="@string/text_overlay_summary" />
     </PreferenceCategory>
     <PreferenceCategory android:title="USB Camera Settings">
         <EditTextPreference
@@ -56,5 +51,25 @@
             android:defaultValue="1080"
             android:title="@string/usb_height"
             android:inputType="number" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Filter Settings">
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="text_overlay"
+            android:title="@string/text_overlay"
+            android:summary="@string/text_overlay_summary" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="text_overlay_timezone"
+            android:title="@string/text_overlay_timezone"
+            android:summary="@string/text_overlay_timezone_summary"
+            android:dependency="text_overlay"/>
+        <Preference
+            android:key="chroma_bg"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:defaultValue="false"
+            android:title="@string/chroma_filter_background"
+            app:summary="@string/chroma_filter_background_summary" />
     </PreferenceCategory>
 </PreferenceScreen>
