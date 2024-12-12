@@ -1,6 +1,5 @@
 package io.opentakserver.opentakicu;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -11,7 +10,6 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
@@ -36,7 +34,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.BuildConfig;
@@ -50,14 +47,11 @@ import io.opentakserver.opentakicu.contants.Preferences;
 
 import com.pedro.library.view.OpenGlView;
 
-import java.util.ArrayList;
-
 public class Camera2Fragment extends Fragment
         implements Button.OnClickListener, SurfaceHolder.Callback, View.OnTouchListener,
         SharedPreferences.OnSharedPreferenceChangeListener, ConnectChecker, PopupMenu.OnMenuItemClickListener {
 
     private final String LOGTAG = "Camera2Fragment";
-    private final ArrayList<String> PERMISSIONS = new ArrayList<>();
     SharedPreferences pref;
 
     private Activity activity;
@@ -271,15 +265,6 @@ public class Camera2Fragment extends Fragment
         if (uid == null)
             pref.edit().putString(Preferences.UID, Preferences.UID_DEFAULT).apply();
 
-        permissions();
-
-        if (!hasPermissions(activity, PERMISSIONS)) {
-            Intent intent = new Intent(activity, OnBoardingActivity.class);
-            startActivity(intent);
-            activity.finish();
-            return;
-        }
-
         NetworkRequest networkRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
@@ -374,34 +359,6 @@ public class Camera2Fragment extends Fragment
     private void unlockScreenOrientation() {
         Log.d(LOGTAG, "unlockScreenOrientation");
         activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-    }
-
-    private void permissions() {
-        PERMISSIONS.add(Manifest.permission.RECORD_AUDIO);
-        PERMISSIONS.add(Manifest.permission.CAMERA);
-        PERMISSIONS.add(Manifest.permission.ACCESS_FINE_LOCATION);
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
-            PERMISSIONS.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            PERMISSIONS.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            PERMISSIONS.add(Manifest.permission.POST_NOTIFICATIONS);
-        }
-    }
-
-    private boolean hasPermissions(Context context, ArrayList<String> permissions) {
-        if (context != null && permissions != null) {
-            for (String permission : permissions) {
-                if (ActivityCompat.checkSelfPermission(context, permission)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     @Override
