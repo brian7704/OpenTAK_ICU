@@ -150,7 +150,6 @@ public class Camera2Fragment extends Fragment
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            Log.d(LOGTAG, "onReceive " + action);
             if (action != null && action.equals(Camera2Service.EXIT_APP)) {
                 Log.d(LOGTAG, "Exiting app");
                 activity.finishAndRemoveTask();
@@ -309,6 +308,18 @@ public class Camera2Fragment extends Fragment
         Log.d(LOGTAG, "onPause");
         if (camera_service != null)
             camera_service.stopPreview();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        Log.d(LOGTAG, "onResume");
+        if (camera_service != null & openGlView != null & openGlView.getHolder().getSurface().isValid()) {
+            camera_service.startPreview(openGlView);
+            Log.d(LOGTAG,"onPause startedd preview");
+        } else {
+            Log.d(LOGTAG, "onPause didn't start preview " + (camera_service == null) + " " + (openGlView == null));
+        }
     }
 
     private void getViews() {

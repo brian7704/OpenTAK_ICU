@@ -769,8 +769,10 @@ public class Camera2Service extends Service implements ConnectChecker,
 
         if (videoSource.equals(Preferences.VIDEO_SOURCE_USB)) {
             prepareVideo = getStream().prepareVideo(width, height, bitrate, fps);
+            getStream().changeVideoSource(new CameraUvcSource());
         } else {
             prepareVideo = getStream().prepareVideo(width, height, bitrate, fps, 2, CameraHelper.getCameraOrientation(getApplicationContext()));
+            getStream().changeVideoSource(new Camera2Source(getApplicationContext()));
         }
 
         Log.d(LOGTAG, "Sample rate: " + samplerate + " stereo " + stereo);
@@ -869,14 +871,6 @@ public class Camera2Service extends Service implements ConnectChecker,
 
         getResolutions();
         prepareEncoders();
-
-        if (!videoSource.equals(oldVideoSource) && prepareVideo && prepareAudio) {
-            if (videoSource.equals(Preferences.VIDEO_SOURCE_USB)) {
-                getStream().changeVideoSource(new CameraUvcSource());
-            } else {
-                getStream().changeVideoSource(new Camera2Source(getApplicationContext()));
-            }
-        }
 
         getStream().getStreamClient().setLogs(false);
         if (videoSource.equals(Preferences.VIDEO_SOURCE_DEFAULT)) {
