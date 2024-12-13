@@ -35,7 +35,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.OpenTAKICU"
+        android:theme="@style/OpenTAKICU"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
 
@@ -48,7 +48,7 @@
             android:exported="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
             android:screenOrientation="fullSensor"
-            android:theme="@style/Theme.OpenTAKICU">
+            android:theme="@style/OpenTAKICU">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

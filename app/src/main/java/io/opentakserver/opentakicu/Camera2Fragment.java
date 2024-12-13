@@ -22,6 +22,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 import android.util.Range;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -63,7 +64,7 @@ public class Camera2Fragment extends Fragment
     private FloatingActionButton bStartStop;
     private PopupMenu popupMenu;
     PopupMenuHandler popupMenuHandler;
-    private Handler handler = new Handler();
+    private final Handler handler = new Handler();
 
     private TextView tvBitrate;
     private TextView tvLocationFix;
@@ -82,11 +83,6 @@ public class Camera2Fragment extends Fragment
     private long last_fix_time = 0;
     private FirebaseAnalytics mFirebaseAnalytics;
 
-    public Camera2Fragment() {
-        super(R.layout.camera2_fragment);
-        Log.d(LOGTAG, "constructor");
-    }
-
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceBundle) {
         Log.d(LOGTAG, "onCreateView");
@@ -98,43 +94,7 @@ public class Camera2Fragment extends Fragment
         super.onViewCreated(view, savedInstanceState);
         Log.d(LOGTAG, "onViewCreated");
 
-        pictureButton = view.findViewById(R.id.pictureButton);
-        pictureButton.setOnClickListener(this);
-
-        openGlView = activity.findViewById(R.id.openGlView);
-        openGlView.getHolder().addCallback(this);
-        openGlView.setOnTouchListener(this);
-
-        tvBitrate = activity.findViewById(R.id.bitrate_value);
-        tvLocationFix = activity.findViewById(R.id.location_fix_status);
-        tvStreamPath = activity.findViewById(R.id.stream_path_name);
-        tvRecording = activity.findViewById(R.id.recording_status);
-        tvTakServer = activity.findViewById(R.id.atak_connection_status);
-
-        videoSourceButton = activity.findViewById(R.id.videoSource);
-        videoSourceButton.setOnClickListener(this);
-
-        zoomSlider = activity.findViewById(R.id.zoom_slider);
-        zoomSlider.setOnTouchListener(this);
-        handler.postDelayed(setZoomSliderVisibility, 3000);
-
-        setStatusState();
-
-        bStartStop = activity.findViewById(R.id.b_start_stop);
-        bStartStop.setOnClickListener(this);
-        switchCameraButton = activity.findViewById(R.id.switch_camera);
-        switchCameraButton.setOnClickListener(this);
-        whiteOverlay = activity.findViewById(R.id.white_color_overlay);
-
-        flashlight = activity.findViewById(R.id.flashlight);
-        flashlight.setOnClickListener(this);
-
-        FloatingActionButton settingsButton = activity.findViewById(R.id.settingsButton);
-        settingsButton.setOnClickListener(this);
-
-        popupMenu = new PopupMenu(activity, videoSourceButton);
-        popupMenu.getMenuInflater().inflate(R.menu.popup_menu, popupMenu.getMenu());
-        popupMenu.setOnMenuItemClickListener(this);
+        getViews();
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(Camera2Service.EXIT_APP);
@@ -163,8 +123,12 @@ public class Camera2Fragment extends Fragment
         Camera2Service.observer.observe(getViewLifecycleOwner(), cameraService -> {
             Log.d(LOGTAG, "observer");
             camera_service = cameraService;
-            popupMenuHandler = new PopupMenuHandler(cameraService, getActivity());
-            setZoomRange();
+            if (cameraService != null) {
+                popupMenuHandler = new PopupMenuHandler(cameraService, getActivity());
+                setZoomRange();
+            } else {
+                Log.e(LOGTAG, "observer service null");
+            }
 
             if (openGlView.getHolder().getSurface().isValid() && camera_service != null) {
                 camera_service.startPreview(openGlView);
@@ -293,6 +257,7 @@ public class Camera2Fragment extends Fragment
             zoomSlider.setValueFrom(zoomRange.getLower());
             zoomSlider.setValueTo(zoomRange.getUpper());
             zoomSlider.setValue(zoomRange.getLower());
+            Log.d(LOGTAG, "Set zoomSlider range to " + zoomRange.getLower() + " - " + zoomRange.getUpper());
         }
     }
 
@@ -341,6 +306,50 @@ public class Camera2Fragment extends Fragment
         Log.d(LOGTAG, "onPause");
         if (camera_service != null)
             camera_service.stopPreview();
+    }
+
+    private void getViews() {
+        pictureButton = requireActivity().findViewById(R.id.pictureButton);
+        pictureButton.setOnClickListener(this);
+
+        openGlView = activity.findViewById(R.id.openGlView);
+        openGlView.getHolder().addCallback(this);
+        openGlView.setOnTouchListener(this);
+
+        tvBitrate = activity.findViewById(R.id.bitrate_value);
+        tvLocationFix = activity.findViewById(R.id.location_fix_status);
+        tvStreamPath = activity.findViewById(R.id.stream_path_name);
+        tvRecording = activity.findViewById(R.id.recording_status);
+        tvTakServer = activity.findViewById(R.id.atak_connection_status);
+
+        videoSourceButton = activity.findViewById(R.id.videoSource);
+        videoSourceButton.setOnClickListener(this);
+
+        zoomSlider = activity.findViewById(R.id.zoom_slider);
+        zoomSlider.setOnTouchListener(this);
+        handler.postDelayed(setZoomSliderVisibility, 3000);
+        setZoomRange();
+
+        setStatusState();
+
+        bStartStop = activity.findViewById(R.id.b_start_stop);
+        bStartStop.setOnClickListener(this);
+        switchCameraButton = activity.findViewById(R.id.switch_camera);
+        switchCameraButton.setOnClickListener(this);
+        whiteOverlay = activity.findViewById(R.id.white_color_overlay);
+
+        flashlight = activity.findViewById(R.id.flashlight);
+        flashlight.setOnClickListener(this);
+
+        FloatingActionButton settingsButton = activity.findViewById(R.id.settingsButton);
+        settingsButton.setOnClickListener(this);
+
+        popupMenu = new PopupMenu(activity, videoSourceButton);
+        popupMenu.getMenuInflater().inflate(R.menu.popup_menu, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(this);
+
+        requireActivity().getWindow().setStatusBarColor(Color.TRANSPARENT);
+        requireActivity().getWindow().setNavigationBarColor(Color.TRANSPARENT);
     }
 
     private final ServiceConnection mConnection = new ServiceConnection() {
@@ -449,8 +458,7 @@ public class Camera2Fragment extends Fragment
         }
 
         if (action == MotionEvent.ACTION_UP) {
-            handler.postDelayed(setZoomSliderVisibility, 5000);
-            Log.d(LOGTAG, "ACTION UP");
+            handler.postDelayed(setZoomSliderVisibility, 3000);
         }
 
         if (view == zoomSlider && camera_service != null) {
@@ -496,7 +504,16 @@ public class Camera2Fragment extends Fragment
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        Log.d(LOGTAG, "onConfigChange " + newConfig);
+        Log.d(LOGTAG, "onConfig " + newConfig.orientation);
+
+        LayoutInflater inflater = (LayoutInflater) requireContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View newView = inflater.inflate(R.layout.camera2_fragment, null);
+        ViewGroup rootView = (ViewGroup) requireView();
+        rootView.removeAllViews();
+        rootView.addView(newView);
+
+        getViews();
+
         camera_service.stopPreview();
         camera_service.prepareEncoders();
         camera_service.startPreview(openGlView);

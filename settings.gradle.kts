@@ -1,3 +1,5 @@
+import java.net.URI
+
 pluginManagement {
     repositories {
         google()
@@ -11,6 +13,12 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven( "https://jitpack.io")
+    }
+}
+
+sourceControl {
+    gitRepository(URI.create("https://github.com/material-components/material-components-android.git")) {
+        producesModule("com.google.android.material:material-components-android")
     }
 }
 

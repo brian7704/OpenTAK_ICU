@@ -71,10 +71,13 @@ android {
 dependencies {
 
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.navigation:navigation-fragment:2.8.0")
-    implementation("androidx.navigation:navigation-ui:2.8.0")
+    //implementation("com.google.android.material:material:1.12.0")
+    // Use 1.13.0-alpha08 because it adds orientation to the Slider
+    implementation("com.google.android.material:material:1.13.0-alpha08")
+    implementation("androidx.compose.material3:material3:1.3.1")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
+    implementation("androidx.navigation:navigation-fragment:2.8.5")
+    implementation("androidx.navigation:navigation-ui:2.8.5")
     implementation("androidx.fragment:fragment-ktx:1.8.5")
     implementation("com.github.pedroSG94.RootEncoder:library:2.5.5")
     implementation("com.github.AppIntro:AppIntro:6.3.1")
@@ -86,8 +89,8 @@ dependencies {
     implementation("javax.xml.stream:stax-api:1.0-2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.sealwu:kscript-tools:1.0.2")
-    implementation("com.google.firebase:firebase-analytics:22.1.0")
-    implementation(platform("com.google.firebase:firebase-bom:33.2.0"))
+    implementation("com.google.firebase:firebase-analytics:22.1.2")
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.github.topjohnwu.libsu:core:6.0.0")
