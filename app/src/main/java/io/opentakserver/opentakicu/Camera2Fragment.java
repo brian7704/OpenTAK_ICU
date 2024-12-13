@@ -22,7 +22,6 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 import android.util.Range;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -258,6 +257,10 @@ public class Camera2Fragment extends Fragment
             zoomSlider.setValueTo(zoomRange.getUpper());
             zoomSlider.setValue(zoomRange.getLower());
             Log.d(LOGTAG, "Set zoomSlider range to " + zoomRange.getLower() + " - " + zoomRange.getUpper());
+        } else {
+            zoomSlider.setValueFrom(0);
+            zoomSlider.setValueTo(1);
+            Log.d(LOGTAG, "set zoom range to 0 - 1");
         }
     }
 
@@ -452,11 +455,14 @@ public class Camera2Fragment extends Fragment
     @Override
     public boolean onTouch(View view, MotionEvent motionEvent) {
         int action = motionEvent.getAction();
+
+        // Show the zoom slider when the screen is touched
         if (action == MotionEvent.ACTION_DOWN) {
             zoomSlider.animate().alpha(1f);
             handler.removeCallbacks(setZoomSliderVisibility);
         }
 
+        // Hide the zoom slider three seconds after user stops touching the screen
         if (action == MotionEvent.ACTION_UP) {
             handler.postDelayed(setZoomSliderVisibility, 3000);
         }
@@ -471,6 +477,11 @@ public class Camera2Fragment extends Fragment
         if (motionEvent.getPointerCount() > 1) {
             if (action == MotionEvent.ACTION_MOVE && camera_service != null) {
                 camera_service.setZoom(motionEvent);
+                float zoom = camera_service.getZoom();
+                if (zoom >= zoomSlider.getValueFrom() && zoom <= zoomSlider.getValueTo())
+                    zoomSlider.setValue(camera_service.getZoom());
+                else
+                    zoomSlider.setValue(zoomSlider.getValueFrom());
             }
         } else if (action == MotionEvent.ACTION_DOWN && camera_service != null) {
             camera_service.tapToFocus(motionEvent);
@@ -527,6 +538,11 @@ public class Camera2Fragment extends Fragment
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
         setStatusState();
+
+        Log.d(LOGTAG, "Got pref " + s);
+        if (s != null && s.equals(Preferences.VIDEO_SOURCE)) {
+            setZoomRange();
+        }
     }
 
     @Override

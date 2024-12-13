@@ -322,6 +322,20 @@ public class Camera2Service extends Service implements ConnectChecker,
         }
     }
 
+    public float getZoom() {
+        Log.d(LOGTAG, "GetZoom " + (getStream().getVideoSource() instanceof Camera2Source));
+        if (getStream().getVideoSource() instanceof Camera2Source) {
+            Camera2Source camera2Source = (Camera2Source) getStream().getVideoSource();
+            Log.d(LOGTAG, "Zoom is " + camera2Source.getZoom());
+            if (camera2Source.getZoom() < camera2Source.getZoomRange().getLower() || camera2Source.getZoom() > camera2Source.getZoomRange().getUpper())
+                return camera2Source.getZoomRange().getLower();
+
+            return camera2Source.getZoom();
+        }
+        Log.d(LOGTAG, "Zoom is 0");
+        return 0f;
+    }
+
     public VideoSource getVideoSource() {
         if (videoSource.equals(Preferences.VIDEO_SOURCE_USB)) {
             Log.d(LOGTAG, "returning new usb cam");
