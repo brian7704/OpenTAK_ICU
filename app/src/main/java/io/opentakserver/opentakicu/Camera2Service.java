@@ -477,7 +477,7 @@ public class Camera2Service extends Service implements ConnectChecker,
 
     private boolean toggleRedLights() {
         Camera2Source camera2Source;
-        if (videoSource.equals(Preferences.VIDEO_SOURCE))
+        if (videoSource.equals(Preferences.VIDEO_SOURCE_DEFAULT))
             camera2Source = (Camera2Source) getStream().getVideoSource();
         else
             return false;
