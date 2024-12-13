@@ -1,6 +1,8 @@
 package io.opentakserver.opentakicu;
 
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
@@ -68,6 +70,7 @@ import java.util.TimeZone;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.preference.PreferenceManager;
 import io.opentakserver.opentakicu.contants.Preferences;
@@ -126,6 +129,23 @@ public class PopupMenuHandler implements SharedPreferences.OnSharedPreferenceCha
             }
 
             return true;
+        }
+
+        if (item == R.id.exit) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(context);
+            builder.setMessage("Do you want to exit?");
+            builder.setTitle("Exit?");
+            builder.setCancelable(false);
+            builder.setPositiveButton("Yes", (dialog, which) -> {
+                context.sendBroadcast(new Intent(Camera2Service.EXIT_APP));
+            });
+
+            builder.setNegativeButton("No", (dialog, which) -> {
+                dialog.cancel();
+            });
+
+            AlertDialog alertDialog = builder.create();
+            alertDialog.show();
         }
 
         // Filters
