@@ -69,7 +69,7 @@ public class Preferences {
     public static final String AUDIO_SAMPLE_RATE = "samplerate";
     public static final String AUDIO_SAMPLE_RATE_DEFAULT = "44100";
     public static final String AUDIO_CODEC = "audio_codec";
-    public static final String AUDIO_CODEC_DEFAULT = AudioCodec.OPUS.name();
+    public static final String AUDIO_CODEC_DEFAULT = AudioCodec.AAC.name();
     public static final String STEREO_AUDIO = "stereo";
     public static final boolean STEREO_AUDIO_DEFAULT = true;
     public static final String AUDIO_ECHO_CANCEL = "echo_cancel";

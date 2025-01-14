@@ -257,7 +257,7 @@ public class Camera2Service extends Service implements ConnectChecker,
 
         int type = 0;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
+            type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE|ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
         }
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
@@ -588,13 +588,13 @@ public class Camera2Service extends Service implements ConnectChecker,
         }
 
         if (hasGravityData && hasGeomagneticData) {
-            float identityMatrix[] = new float[9];
-            float rotationMatrix[] = new float[9];
+            float[] identityMatrix = new float[9];
+            float[] rotationMatrix = new float[9];
             boolean success = SensorManager.getRotationMatrix(rotationMatrix, identityMatrix,
                     gravityData, geomagneticData);
 
             if (success) {
-                float orientationMatrix[] = new float[3];
+                float[] orientationMatrix = new float[3];
                 SensorManager.getOrientation(rotationMatrix, orientationMatrix);
                 float rotationInRadians = orientationMatrix[0];
                 rotationInDegrees = Math.toDegrees(rotationInRadians);

@@ -79,6 +79,10 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
         } else if (protocol.equals("srt") || protocol.equals("udp")){
             codecs.add(AudioCodec.OPUS.name());
             codecs.add(AudioCodec.AAC.name());
+        } else {
+            codecs.add(AudioCodec.OPUS.name());
+            codecs.add(AudioCodec.AAC.name());
+            codecs.add(AudioCodec.G711.name());
         }
 
         codec.setEntries(codecs.toArray(new CharSequence[codecs.size()]));
