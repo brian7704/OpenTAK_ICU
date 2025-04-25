@@ -1019,12 +1019,16 @@ public class Camera2Service extends Service implements ConnectChecker,
 
                 // Support for MediaMTX's way of doing RTMP authentication
                 if (protocol.startsWith("rtmp") && !username.equals(Preferences.STREAM_USERNAME_DEFAULT) && !password.equals(Preferences.STREAM_PASSWORD_DEFAULT)) {
-                    url = url.concat("/").concat(path).concat("?user=").concat(username).concat("&pass=").concat(password);
+                    url = url.concat("/").concat(path);
+                    if (username != null && !username.isEmpty())
+                        url = url.concat("?user=").concat(username).concat("&pass=").concat(password);
                 }
                 else if (!protocol.equals("udp") && !protocol.equals("srt"))
                     url = url.concat("/").concat(path);
                 else if (protocol.equals("srt")) {
-                    url += "/publish:" + path;
+                    url += "?streamid=publish:" + path;
+                    if (username != null && !username.isEmpty())
+                        url += ":" + username + ":" + password;
                 }
                 // UDP Multicast
                 else {
