@@ -94,8 +94,6 @@ public class Preferences {
     public static final String ATAK_SERVER_PASSWORD_DEFAULT = null;
     public static final String ATAK_SERVER_SSL = "atak_ssl";
     public static final boolean ATAK_SERVER_SSL_DEFAULT = false;
-    public static final String ATAK_SERVER_SELF_SIGNED_CERT = "atak_ssl_self_signed";
-    public static final boolean ATAK_SERVER_SELF_SIGNED_CERT_DEFAULT = false;
     public static final String ATAK_SERVER_SSL_TRUST_STORE = "trust_store_certificate";
     public static final String ATAK_SERVER_SSL_TRUST_STORE_DEFAULT = null;
     public static final String ATAK_SERVER_SSL_TRUST_STORE_PASSWORD = "trust_store_cert_password";

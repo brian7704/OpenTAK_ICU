@@ -4,7 +4,7 @@ import android.util.Log;
 
 import com.pedro.library.base.recording.RecordController;
 
-public class RecordingListener implements RecordController.Listener{
+public class RecordingListener implements RecordController.Listener {
     private static final String LOGTAG = "RecordingListener";
 
     @Override

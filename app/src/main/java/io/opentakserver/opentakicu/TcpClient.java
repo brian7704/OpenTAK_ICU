@@ -60,7 +60,6 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
     private String atak_username;
     private String atak_password;
     private boolean atak_ssl = false;
-    private boolean atak_ssl_self_signed = true;
     private String atak_trust_store;
     private String atak_trust_store_password;
     private String atak_client_cert;
@@ -156,38 +155,32 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
             getSettings();
 
             if (atak_ssl) {
-                if (atak_ssl_self_signed) {
-                    Log.d(TAG, "Connecting via SSL to a server with a self signed cert");
-                    KeyStore trusted = KeyStore.getInstance("PKCS12");
-                    FileInputStream trust_store = new FileInputStream(atak_trust_store);
+                Log.d(TAG, "Connecting via SSL to a server with a self signed cert");
+                KeyStore trusted = KeyStore.getInstance("PKCS12");
+                FileInputStream trust_store = new FileInputStream(atak_trust_store);
 
-                    KeyStore client_cert_keystore = KeyStore.getInstance("PKCS12");
-                    FileInputStream client_cert = new FileInputStream(atak_client_cert);
+                KeyStore client_cert_keystore = KeyStore.getInstance("PKCS12");
+                FileInputStream client_cert = new FileInputStream(atak_client_cert);
 
-                    trusted.load(trust_store, atak_trust_store_password.toCharArray());
-                    trust_store.close();
+                trusted.load(trust_store, atak_trust_store_password.toCharArray());
+                trust_store.close();
 
-                    client_cert_keystore.load(client_cert, atak_client_cert_password.toCharArray());
-                    client_cert.close();
+                client_cert_keystore.load(client_cert, atak_client_cert_password.toCharArray());
+                client_cert.close();
 
-                    TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-                    trustManagerFactory.init(trusted);
+                TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                trustManagerFactory.init(trusted);
 
 
-                    KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-                    kmf.init(client_cert_keystore, atak_trust_store_password.toCharArray());
-                    SSLContext sslContext = SSLContext.getInstance("TLSv1.3");
-                    sslContext.init(kmf.getKeyManagers(),trustManagerFactory.getTrustManagers(),null);
+                KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                kmf.init(client_cert_keystore, atak_trust_store_password.toCharArray());
+                SSLContext sslContext = SSLContext.getInstance("TLSv1.3");
+                sslContext.init(kmf.getKeyManagers(),trustManagerFactory.getTrustManagers(),null);
 
-                    SSLSocketFactory factory = sslContext.getSocketFactory();
-                    sslSocket = (SSLSocket) factory.createSocket(serverAddr, port);
-                    sslSocket.setSoTimeout(1000);
-                } else {
-                    Log.d(TAG, "Connecting vi SSL to a server with a signed cert");
-                    SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-                    sslSocket = (SSLSocket) factory.createSocket(serverAddr, port);
-                    sslSocket.setSoTimeout(1000);
-                }
+                SSLSocketFactory factory = sslContext.getSocketFactory();
+                sslSocket = (SSLSocket) factory.createSocket(serverAddr, port);
+                sslSocket.setSoTimeout(1000);
+
                 mBufferOut = new PrintWriter(new BufferedWriter(new OutputStreamWriter(sslSocket.getOutputStream())), true);
                 mBufferIn = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
                 context.sendBroadcast(new Intent(TAK_SERVER_CONNECTED).setPackage(context.getPackageName()));
@@ -279,7 +272,6 @@ public class TcpClient extends Thread implements SharedPreferences.OnSharedPrefe
         atak_username = prefs.getString(Preferences.ATAK_SERVER_USERNAME, Preferences.ATAK_SERVER_USERNAME_DEFAULT);
         atak_password = prefs.getString(Preferences.ATAK_SERVER_PASSWORD, Preferences.ATAK_SERVER_PASSWORD_DEFAULT);
         atak_ssl = prefs.getBoolean(Preferences.ATAK_SERVER_SSL, Preferences.ATAK_SERVER_SSL_DEFAULT);
-        atak_ssl_self_signed = prefs.getBoolean(Preferences.ATAK_SERVER_SELF_SIGNED_CERT, Preferences.ATAK_SERVER_SELF_SIGNED_CERT_DEFAULT);
         atak_trust_store = prefs.getString(Preferences.ATAK_SERVER_SSL_TRUST_STORE, Preferences.ATAK_SERVER_SSL_TRUST_STORE_DEFAULT);
         atak_trust_store_password = prefs.getString(Preferences.ATAK_SERVER_SSL_TRUST_STORE_PASSWORD, Preferences.ATAK_SERVER_SSL_TRUST_STORE_PASSWORD_DEFAULT);
         atak_client_cert = prefs.getString(Preferences.ATAK_SERVER_SSL_CLIENT_CERTIFICATE, Preferences.ATAK_SERVER_SSL_CLIENT_CERTIFICATE_DEFAULT);
