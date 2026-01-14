@@ -2,6 +2,9 @@ package io.opentakserver.opentakicu;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
@@ -12,8 +15,10 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.github.appintro.AppIntro;
 import com.github.appintro.SlidePolicy;
@@ -28,6 +33,9 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.fragment.app.Fragment;
+import androidx.preference.PreferenceManager;
+
+import io.opentakserver.opentakicu.contants.Preferences;
 
 public class OnBoardingActivity extends AppIntro {
     private static final String ENABLE_BACK_BUTTON = "back_enabled";
@@ -38,6 +46,8 @@ public class OnBoardingActivity extends AppIntro {
     private static final String BACKGROUND_LOCATION_SLIDE = "background_location_slide";
     private static final String STORAGE_SLIDE = "storage_slide";
     private static final String FINALIZE_SLIDE = "finalize_slide";
+
+    private static final String DEEPLINK_PREFIX = "DEEPLINK_PREFERENCE_";
 
     public static class CustomLayout extends Fragment implements SlidePolicy {
 
@@ -132,6 +142,44 @@ public class OnBoardingActivity extends AppIntro {
         }
     }
 
+    public static class ImportSettingsSlide extends Fragment implements SlidePolicy {
+        @Override
+        public View onCreateView(LayoutInflater layoutInflater, ViewGroup container, Bundle savedInstance) {
+            View view = layoutInflater.inflate(R.layout.onboarding_import, container, false);
+            Bundle args = getArguments();
+
+            TextView title = view.findViewById(R.id.title);
+            TextView desc = view.findViewById(R.id.description);
+            Button btnAccept = view.findViewById(R.id.btn_accept);
+            
+            title.setText(R.string.import_dialog_title);
+            if (args != null) {
+                desc.setText(args.getCharSequence("display_msg"));
+            }
+
+            btnAccept.setOnClickListener(v -> {
+                if (getActivity() instanceof OnBoardingActivity) {
+                    OnBoardingActivity activity = (OnBoardingActivity) getActivity();
+
+                    activity.saveSettingsFromBundle(args);
+                    activity.goToNextSlide();
+                }
+            });
+
+            return view;
+        }
+
+        @Override public boolean isPolicyRespected() { return true; }
+        @Override public void onUserIllegallyRequestedNextPage() {}
+
+        public static ImportSettingsSlide createInstance(Bundle configData, String msg) {
+            ImportSettingsSlide fragment = new ImportSettingsSlide();
+            configData.putCharSequence("display_msg", msg);
+            fragment.setArguments(configData);
+            return fragment;
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -143,9 +191,11 @@ public class OnBoardingActivity extends AppIntro {
 
 
         // Basic permissions slide
-        addSlide(CustomLayout.createInstance(getString(R.string.permissions),
-                getText(R.string.permissions_slide_description),
-                R.mipmap.ic_launcher, true, PERMISSIONS_SLIDE));
+        if (needsPermission(Manifest.permission.CAMERA) || needsPermission(Manifest.permission.RECORD_AUDIO) || needsPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            addSlide(CustomLayout.createInstance(getString(R.string.permissions),
+                    getText(R.string.permissions_slide_description),
+                    R.mipmap.ic_launcher, true, PERMISSIONS_SLIDE));
+        }
 
         // Network permission slide
         //addSlide(CustomLayout.createInstance("Network State", "Network state perms", R.mipmap.ic_launcher, true, NETWORK_PERMISSIONS_SLIDE));
@@ -153,7 +203,7 @@ public class OnBoardingActivity extends AppIntro {
         int slide_number = 3;
 
         // For android 9 or less request storage permission to save photos and video recordings
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && needsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             addSlide(CustomLayout.createInstance(getString(R.string.storage_slide_title), getString(R.string.storage_slide_description), R.mipmap.ic_launcher, true, STORAGE_SLIDE));
             String[] storage_permission = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
             askForPermissions(storage_permission, slide_number, false);
@@ -161,7 +211,7 @@ public class OnBoardingActivity extends AppIntro {
         }
 
         // For android 10 or later ask for background location for sending CoTs
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && needsPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
             addSlide(CustomLayout.createInstance(getString(R.string.background_location_permission),
                     getText(R.string.background_location_permissions_slide_description),
                     R.mipmap.ic_launcher, true, BACKGROUND_LOCATION_SLIDE));
@@ -169,6 +219,9 @@ public class OnBoardingActivity extends AppIntro {
             String[] background_location_permission = new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION};
             askForPermissions(background_location_permission, slide_number, true);
         }
+
+        // Handle Deeplink imports if present
+        handleIntentImport();
 
         // Finished slide
         addSlide(CustomLayout.createInstance(getString(R.string.finished),
@@ -204,6 +257,58 @@ public class OnBoardingActivity extends AppIntro {
         setNextArrowColor(colorAccent);
         setBackArrowColor(colorAccent);
         setColorDoneText(colorAccent);
+    }
+
+    private void handleIntentImport() {
+        Uri data = getIntent().getData();
+        if (data != null && "opentakicu".equals(data.getScheme())) {
+            String protocol = data.getQueryParameter(Preferences.STREAM_PROTOCOL);
+            String address  = data.getQueryParameter(Preferences.STREAM_ADDRESS);
+            String port     = data.getQueryParameter(Preferences.STREAM_PORT);
+            String path     = data.getQueryParameter(Preferences.STREAM_PATH);
+            String user     = data.getQueryParameter(Preferences.STREAM_USERNAME);
+            String pass     = data.getQueryParameter(Preferences.STREAM_PASSWORD);
+
+            if (protocol != null || address != null || port != null || path != null || user != null || pass != null) {
+                StringBuilder msg = new StringBuilder();
+                msg.append(getString(R.string.import_dialog_message)).append("\n");
+                if (address != null) msg.append(getString(R.string.label_address, address));
+                if (protocol != null) msg.append(getString(R.string.label_protocol, protocol));
+                if (port != null) msg.append(getString(R.string.label_port, port));
+                if (path != null) msg.append(getString(R.string.label_path, path));
+                if (user != null) msg.append(getString(R.string.label_user, user));
+                if (pass != null) msg.append(getString(R.string.label_pass, pass));
+
+                Bundle configData = new Bundle();
+                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_PROTOCOL, protocol);
+                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_ADDRESS, address);
+                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_PORT, port);
+                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_PATH, path);
+                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_USERNAME, user);
+                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_PASSWORD, pass);
+
+                addSlide(ImportSettingsSlide.createInstance(configData, msg.toString()));
+            }
+        }
+    }
+
+    public void saveSettingsFromBundle(Bundle data) {
+        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
+
+        for (String bundleKey : data.keySet()) {
+            if (bundleKey.startsWith(DEEPLINK_PREFIX)) {
+                String value = data.getString(bundleKey);
+                String prefKey = bundleKey.substring(DEEPLINK_PREFIX.length());
+
+                if (value != null) { editor.putString(prefKey, value);}
+            }
+        }
+
+        editor.apply();
+        Toast.makeText(this, R.string.settings_updated_success, Toast.LENGTH_SHORT).show();
+    }
+    private boolean needsPermission(String permission) {
+        return ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
