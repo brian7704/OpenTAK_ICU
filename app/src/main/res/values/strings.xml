@@ -210,4 +210,5 @@
     <string name="text_overlay_timezone_summary">Enable for UTC, disable for local time zone</string>
     <string name="chroma_filter_background">Chroma Backgroud</string>
     <string name="chroma_filter_background_summary">Background image for use with the chroma key filter. Requires a bright green background.</string>
+    <string name="title_activity_preferences">Preferences</string>
 </resources>

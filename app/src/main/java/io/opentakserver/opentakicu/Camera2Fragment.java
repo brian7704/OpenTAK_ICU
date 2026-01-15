@@ -442,7 +442,7 @@ public class Camera2Fragment extends Fragment
             setZoomRange();
             flashlight.setImageResource(R.drawable.flashlight_off);
         } else if (id == R.id.settingsButton) {
-            Intent intent = new Intent(activity, SettingsActivity.class);
+            Intent intent = new Intent(activity, io.opentakserver.opentakicu.Preferences.class);
             startActivity(intent);
         } else if (id == R.id.flashlight) {
             boolean lanternEnabled = camera_service.toggleLantern();
@@ -495,7 +495,7 @@ public class Camera2Fragment extends Fragment
                     zoomSlider.setValue(zoomSlider.getValueFrom());
             }
         } else if (action == MotionEvent.ACTION_DOWN && camera_service != null) {
-            camera_service.tapToFocus(motionEvent);
+            camera_service.tapToFocus(view, motionEvent);
         }
         return true;
     }

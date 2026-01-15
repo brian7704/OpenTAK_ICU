@@ -17,8 +17,7 @@
 
     </style>
 
-    <style name="buttonStyle"
-        parent="android:style/Widget.Button">
+    <style name="buttonStyle" parent="android:style/Widget.Button">
         <item name="android:padding">8dp</item>
         <item name="android:textColor">@color/white</item>
         <item name="android:textStyle">bold</item>

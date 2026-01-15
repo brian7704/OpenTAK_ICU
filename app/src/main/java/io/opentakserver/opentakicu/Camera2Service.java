@@ -69,6 +69,7 @@ import android.util.Size;
 import android.util.SizeF;
 import android.view.MotionEvent;
 import android.view.Surface;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
 
@@ -553,10 +554,10 @@ public class Camera2Service extends Service implements ConnectChecker,
         }
     }
 
-    public void tapToFocus(MotionEvent motionEvent) {
+    public void tapToFocus(View view, MotionEvent motionEvent) {
         if (videoSource.equals(Preferences.VIDEO_SOURCE_DEFAULT)) {
             Camera2Source camera2Source = (Camera2Source) getStream().getVideoSource();
-            camera2Source.tapToFocus(motionEvent);
+            camera2Source.tapToFocus(view, motionEvent);
         }
     }
 

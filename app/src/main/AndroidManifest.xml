@@ -38,39 +38,40 @@
         android:theme="@style/OpenTAKICU"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
+        <activity
+            android:name=".Preferences"
+            android:exported="false"
+            android:label="@string/title_activity_preferences"
+            android:theme="@style/OpenTAKICU" />
 
         <service
-            android:foregroundServiceType="microphone|camera"
-            android:name=".Camera2Service" />
+            android:name=".Camera2Service"
+            android:foregroundServiceType="microphone|camera" />
 
         <activity
             android:name=".MainActivity"
-            android:exported="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+            android:exported="true"
             android:screenOrientation="fullSensor"
             android:theme="@style/OpenTAKICU">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
             </intent-filter>
-
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED" />
             </intent-filter>
+
             <meta-data
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/device_filter" />
-
         </activity>
         <activity android:name=".OnBoardingActivity" />
-        <activity android:name=".SettingsActivity" />
-
-        <!--Show up in ATAK's plugin list-->
+        <activity android:name=".SettingsActivity" /> <!-- Show up in ATAK's plugin list -->
         <activity
             android:name="com.atakmap.app.component"
             android:exported="true"
