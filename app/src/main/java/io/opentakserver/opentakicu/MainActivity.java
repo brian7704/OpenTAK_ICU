@@ -3,22 +3,25 @@ package io.opentakserver.opentakicu;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.preference.PreferenceManager;
+
+import io.opentakserver.opentakicu.contants.Preferences;
 
 public class MainActivity extends AppCompatActivity {
     private static final String LOGTAG = "MainActivity";
@@ -35,8 +38,14 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         Log.d(LOGTAG, "onCreate");
 
-        if (!hasPermissions(this, PERMISSIONS)) {
+        Uri deepLinkData = getIntent().getData();
+
+
+        if (!hasPermissions(this, PERMISSIONS) || (deepLinkData != null && "import".equals(deepLinkData.getHost()))) {
             Intent intent = new Intent(this, OnBoardingActivity.class);
+            if(deepLinkData != null){
+                intent.setData(deepLinkData);
+            }
             startActivity(intent);
             this.finish();
             return;
@@ -54,6 +63,20 @@ public class MainActivity extends AppCompatActivity {
                 .setReorderingAllowed(true)
                 .add(R.id.fragment_container_view, Camera2Fragment.class, null)
                 .commit();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+
+        Uri data = intent.getData();
+        if (data != null && "import".equals(data.getHost())) {
+            Intent onboarding = new Intent(this, OnBoardingActivity.class);
+            onboarding.setData(data);
+            startActivity(onboarding);
+            this.finish();
+        }
     }
 
     private boolean hasPermissions(Context context, ArrayList<String> permissions) {

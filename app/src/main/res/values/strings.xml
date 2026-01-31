@@ -210,4 +210,16 @@
     <string name="text_overlay_timezone_summary">Enable for UTC, disable for local time zone</string>
     <string name="chroma_filter_background">Chroma Backgroud</string>
     <string name="chroma_filter_background_summary">Background image for use with the chroma key filter. Requires a bright green background.</string>
+
+    <!--stream settings import-->
+    <string name="import_dialog_title">Import Stream Settings</string>
+    <string name="import_dialog_message">Do you want to change the following settings:\n\n</string>
+    <string name="btn_import">Import</string>
+    <string name="label_address">Address: %1$s\n</string>
+    <string name="label_protocol">Protocol: %1$s\n</string>
+    <string name="label_port">Port: %1$s\n</string>
+    <string name="label_path">Path: %1$s\n</string>
+    <string name="label_user">User: %1$s\n</string>
+    <string name="label_pass">Password: %1$s\n</string>
+    <string name="settings_updated_success">Settings Updated Successfully</string>
 </resources>
