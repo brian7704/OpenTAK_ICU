@@ -8,8 +8,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
+import android.text.method.ScrollingMovementMethod;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.Size;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -23,10 +25,15 @@ import android.widget.Toast;
 import com.github.appintro.AppIntro;
 import com.github.appintro.SlidePolicy;
 import com.github.appintro.model.SliderPagerBuilder;
+import com.pedro.encoder.input.sources.video.Camera2Source;
+import com.pedro.encoder.input.video.CameraHelper;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -147,16 +154,27 @@ public class OnBoardingActivity extends AppIntro {
     }
 
     public static class ImportSettingsSlide extends Fragment implements SlidePolicy {
+        private static final String STATE_DECIDED = "import_decided";
+
+        // Settings are only saved by the Import button, so the slide must not be skipped
+        // by swiping or the next arrow before the user has chosen Import or Skip (#18).
+        private boolean decided = false;
+
         @Override
         public View onCreateView(LayoutInflater layoutInflater, ViewGroup container, Bundle savedInstance) {
             View view = layoutInflater.inflate(R.layout.onboarding_import, container, false);
             Bundle args = getArguments();
+            if (savedInstance != null) {
+                decided = savedInstance.getBoolean(STATE_DECIDED, false);
+            }
 
             TextView title = view.findViewById(R.id.title);
             TextView desc = view.findViewById(R.id.description);
             Button btnAccept = view.findViewById(R.id.btn_accept);
-            
+            Button btnSkip = view.findViewById(R.id.btn_skip);
+
             title.setText(R.string.import_dialog_title);
+            desc.setMovementMethod(new ScrollingMovementMethod());
             if (args != null) {
                 desc.setText(args.getCharSequence("display_msg"));
             }
@@ -166,6 +184,17 @@ public class OnBoardingActivity extends AppIntro {
                     OnBoardingActivity activity = (OnBoardingActivity) getActivity();
 
                     activity.saveSettingsFromBundle(args);
+                    decided = true;
+                    activity.goToNextSlide();
+                }
+            });
+
+            btnSkip.setOnClickListener(v -> {
+                if (getActivity() instanceof OnBoardingActivity) {
+                    OnBoardingActivity activity = (OnBoardingActivity) getActivity();
+
+                    decided = true;
+                    Toast.makeText(activity, R.string.import_skipped, Toast.LENGTH_SHORT).show();
                     activity.goToNextSlide();
                 }
             });
@@ -173,8 +202,20 @@ public class OnBoardingActivity extends AppIntro {
             return view;
         }
 
-        @Override public boolean isPolicyRespected() { return true; }
-        @Override public void onUserIllegallyRequestedNextPage() {}
+        @Override
+        public void onSaveInstanceState(@NonNull Bundle outState) {
+            super.onSaveInstanceState(outState);
+            outState.putBoolean(STATE_DECIDED, decided);
+        }
+
+        @Override public boolean isPolicyRespected() { return decided; }
+
+        @Override
+        public void onUserIllegallyRequestedNextPage() {
+            if (getContext() != null) {
+                Toast.makeText(getContext(), R.string.import_choose_option, Toast.LENGTH_SHORT).show();
+            }
+        }
 
         public static ImportSettingsSlide createInstance(Bundle configData, String msg) {
             ImportSettingsSlide fragment = new ImportSettingsSlide();
@@ -284,35 +325,105 @@ public class OnBoardingActivity extends AppIntro {
 
     private void handleIntentImport() {
         Uri data = getIntent().getData();
-        if (data != null && "opentakicu".equals(data.getScheme())) {
-            String protocol = data.getQueryParameter(Preferences.STREAM_PROTOCOL);
-            String address  = data.getQueryParameter(Preferences.STREAM_ADDRESS);
-            String port     = data.getQueryParameter(Preferences.STREAM_PORT);
-            String path     = data.getQueryParameter(Preferences.STREAM_PATH);
-            if (path != null) path = StreamUrlUtils.normalizePath(path);
-            String user     = data.getQueryParameter(Preferences.STREAM_USERNAME);
-            String pass     = data.getQueryParameter(Preferences.STREAM_PASSWORD);
+        if (data == null || !"opentakicu".equals(data.getScheme())) {
+            return;
+        }
 
-            if (protocol != null || address != null || port != null || path != null || user != null || pass != null) {
-                StringBuilder msg = new StringBuilder();
-                msg.append(getString(R.string.import_dialog_message)).append("\n");
-                if (address != null) msg.append(getString(R.string.label_address, address));
-                if (protocol != null) msg.append(getString(R.string.label_protocol, protocol));
-                if (port != null) msg.append(getString(R.string.label_port, port));
-                if (path != null) msg.append(getString(R.string.label_path, path));
-                if (user != null) msg.append(getString(R.string.label_user, user));
-                if (pass != null) msg.append(getString(R.string.label_pass, pass));
+        Map<String, String> params = new LinkedHashMap<>();
+        for (String name : data.getQueryParameterNames()) {
+            params.put(name, data.getQueryParameter(name));
+        }
+        if (params.isEmpty()) {
+            return;
+        }
 
-                Bundle configData = new Bundle();
-                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_PROTOCOL, protocol);
-                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_ADDRESS, address);
-                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_PORT, port);
-                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_PATH, path);
-                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_USERNAME, user);
-                configData.putString(DEEPLINK_PREFIX + Preferences.STREAM_PASSWORD, pass);
+        ImportSchema.Result result = ImportSchema.parse(params);
+        Bundle configData = new Bundle();
+        StringBuilder msg = new StringBuilder();
+        msg.append(getString(R.string.import_dialog_message));
 
-                addSlide(ImportSettingsSlide.createInstance(configData, msg.toString()));
+        for (Map.Entry<String, Object> setting : result.accepted.entrySet()) {
+            String key = setting.getKey();
+            Object value = setting.getValue();
+            String display;
+
+            if (value instanceof ImportSchema.Resolution) {
+                ImportSchema.Resolution requested = (ImportSchema.Resolution) value;
+                List<Size> sizes = backCameraResolutions();
+                List<int[]> supported = new ArrayList<>();
+                for (Size size : sizes) {
+                    supported.add(new int[]{size.getWidth(), size.getHeight()});
+                }
+                int index = ImportSchema.pickResolutionIndex(supported, requested);
+                if (index < 0) {
+                    result.rejected.put(key, requested.toString());
+                    continue;
+                }
+                Size chosen = sizes.get(index);
+                String chosenText = chosen.getWidth() + "x" + chosen.getHeight();
+                configData.putString(DEEPLINK_PREFIX + key, String.valueOf(index));
+                display = chosenText.equals(requested.toString())
+                        ? chosenText
+                        : getString(R.string.import_resolution_fallback, requested.toString(), chosenText);
+            } else if (value instanceof Boolean) {
+                boolean enabled = (Boolean) value;
+                configData.putBoolean(DEEPLINK_PREFIX + key, enabled);
+                if (Preferences.TEXT_OVERLAY_TIMEZONE.equals(key)) {
+                    display = getString(enabled ? R.string.import_value_utc : R.string.import_value_device_time);
+                } else {
+                    display = getString(enabled ? R.string.import_value_on : R.string.import_value_off);
+                }
+            } else {
+                String text = (String) value;
+                configData.putString(DEEPLINK_PREFIX + key, text);
+                display = Preferences.STREAM_PASSWORD.equals(key) && !text.isEmpty() ? "********" : text;
             }
+
+            msg.append(getString(R.string.import_label_format, getString(importLabel(key)), display)).append("\n");
+        }
+
+        if (!result.rejected.isEmpty()) {
+            msg.append("\n").append(getString(R.string.import_rejected_header)).append("\n");
+            for (Map.Entry<String, String> rejected : result.rejected.entrySet()) {
+                msg.append(rejected.getKey()).append(" = ").append(rejected.getValue()).append("\n");
+            }
+        }
+
+        addSlide(ImportSettingsSlide.createInstance(configData, msg.toString()));
+    }
+
+    /** Back camera sizes in the same order Camera2Service uses for the saved resolution index. */
+    private List<Size> backCameraResolutions() {
+        try {
+            Camera2Source camera2Source = new Camera2Source(getApplicationContext());
+            return new ArrayList<>(camera2Source.getCameraResolutions(CameraHelper.Facing.BACK));
+        } catch (Exception e) {
+            Log.w(LOGTAG, "Could not read camera resolutions for import", e);
+            return new ArrayList<>();
+        }
+    }
+
+    private static int importLabel(String key) {
+        switch (key) {
+            case Preferences.STREAM_VIDEO: return R.string.import_key_stream_video;
+            case Preferences.STREAM_PROTOCOL: return R.string.import_key_protocol;
+            case Preferences.STREAM_ADDRESS: return R.string.import_key_address;
+            case Preferences.STREAM_PORT: return R.string.import_key_port;
+            case Preferences.STREAM_PATH: return R.string.import_key_path;
+            case Preferences.STREAM_USERNAME: return R.string.import_key_username;
+            case Preferences.STREAM_PASSWORD: return R.string.import_key_password;
+            case Preferences.VIDEO_SOURCE: return R.string.import_key_video_source;
+            case Preferences.VIDEO_RESOLUTION: return R.string.import_key_resolution;
+            case Preferences.VIDEO_BITRATE: return R.string.import_key_bitrate;
+            case Preferences.VIDEO_ADAPTIVE_BITRATE: return R.string.import_key_adaptive_bitrate;
+            case Preferences.VIDEO_FPS: return R.string.import_key_fps;
+            case Preferences.VIDEO_CODEC: return R.string.import_key_codec;
+            case Preferences.RECORD_VIDEO: return R.string.import_key_record;
+            case Preferences.TEXT_OVERLAY: return R.string.import_key_text_overlay;
+            case Preferences.TEXT_OVERLAY_TIMEZONE: return R.string.import_key_text_overlay_timezone;
+            case Preferences.ENABLE_AUDIO: return R.string.import_key_enable_audio;
+            case Preferences.ATAK_SEND_COT: return R.string.import_key_send_cot;
+            default: throw new IllegalArgumentException("No label for import key " + key);
         }
     }
 
@@ -321,10 +432,15 @@ public class OnBoardingActivity extends AppIntro {
 
         for (String bundleKey : data.keySet()) {
             if (bundleKey.startsWith(DEEPLINK_PREFIX)) {
-                String value = data.getString(bundleKey);
                 String prefKey = bundleKey.substring(DEEPLINK_PREFIX.length());
+                Object value = data.get(bundleKey);
 
-                if (value != null) { editor.putString(prefKey, value);}
+                // Switches are read with getBoolean(), so they must be stored as booleans
+                if (value instanceof Boolean) {
+                    editor.putBoolean(prefKey, (Boolean) value);
+                } else if (value instanceof String) {
+                    editor.putString(prefKey, (String) value);
+                }
             }
         }
 
