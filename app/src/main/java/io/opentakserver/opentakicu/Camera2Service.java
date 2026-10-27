@@ -1022,7 +1022,7 @@ public class Camera2Service extends Service implements ConnectChecker,
         stream = preferences.getBoolean(Preferences.STREAM_VIDEO, Preferences.STREAM_VIDEO_DEFAULT);
         address = preferences.getString(Preferences.STREAM_ADDRESS, Preferences.STREAM_ADDRESS_DEFAULT);
         port = Integer.parseInt(preferences.getString(Preferences.STREAM_PORT, Preferences.STREAM_PORT_DEFAULT));
-        path = preferences.getString(Preferences.STREAM_PATH, Preferences.STREAM_PATH_DEFAULT);
+        path = StreamUrlUtils.normalizePath(preferences.getString(Preferences.STREAM_PATH, Preferences.STREAM_PATH_DEFAULT));
         tcp = preferences.getBoolean(Preferences.STREAM_USE_TCP, Preferences.STREAM_USE_TCP_DEFAULT);
         username = preferences.getString(Preferences.STREAM_USERNAME, Preferences.STREAM_USERNAME_DEFAULT);
         password = preferences.getString(Preferences.STREAM_PASSWORD, Preferences.STREAM_PASSWORD_DEFAULT);
@@ -1359,7 +1359,7 @@ public class Camera2Service extends Service implements ConnectChecker,
                         Log.e(LOGTAG, "Failed to send UDP CoT", e);
                     }
                 }
-                Log.d(LOGTAG, url);
+                Log.d(LOGTAG, StreamUrlUtils.redactUrl(url));
 
                 if (videoSource.equals(Preferences.VIDEO_SOURCE_DEFAULT)) {
                     Camera2Source camera2Source = (Camera2Source) getStream().getVideoSource();
@@ -1378,7 +1378,7 @@ public class Camera2Service extends Service implements ConnectChecker,
                         }
                         return;
                     }
-                    Log.d(LOGTAG, "Started stream to ".concat(url));
+                    Log.d(LOGTAG, "Started stream to ".concat(StreamUrlUtils.redactUrl(url)));
                     if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                             ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                         //This will probably never show since the OnBoardingActivity forces users to grant permission before using the app

@@ -289,6 +289,7 @@ public class OnBoardingActivity extends AppIntro {
             String address  = data.getQueryParameter(Preferences.STREAM_ADDRESS);
             String port     = data.getQueryParameter(Preferences.STREAM_PORT);
             String path     = data.getQueryParameter(Preferences.STREAM_PATH);
+            if (path != null) path = StreamUrlUtils.normalizePath(path);
             String user     = data.getQueryParameter(Preferences.STREAM_USERNAME);
             String pass     = data.getQueryParameter(Preferences.STREAM_PASSWORD);
 
