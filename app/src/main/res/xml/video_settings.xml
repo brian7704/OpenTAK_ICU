@@ -10,6 +10,7 @@
             />
         <ListPreference
             android:key="resolution"
+            app:useSimpleSummaryProvider="true"
             android:title="@string/resolution"
             android:entries="@array/bitrates"
             android:entryValues="@array/bitrates">
@@ -18,6 +19,7 @@
             android:defaultValue="1000"
             android:inputType="number"
             android:key="bitrate"
+            app:useSimpleSummaryProvider="true"
             android:title="@string/bitrate" />
         <SwitchPreference
             android:defaultValue="true"
@@ -29,9 +31,11 @@
             android:entries="@array/fps"
             android:entryValues="@array/fps"
             android:key="fps"
+            app:useSimpleSummaryProvider="true"
             android:title="@string/fps" />
         <ListPreference
             android:key="codec"
+            app:useSimpleSummaryProvider="true"
             android:title="@string/codec"
             android:entries="@array/codecs"
             android:entryValues="@array/codecs" />
@@ -43,11 +47,13 @@
     <PreferenceCategory android:title="USB Camera Settings">
         <EditTextPreference
             android:key="usb_width"
+            app:useSimpleSummaryProvider="true"
             android:defaultValue="1920"
             android:title="@string/usb_width"
             android:inputType="number" />
         <EditTextPreference
             android:key="usb_height"
+            app:useSimpleSummaryProvider="true"
             android:defaultValue="1080"
             android:title="@string/usb_height"
             android:inputType="number" />

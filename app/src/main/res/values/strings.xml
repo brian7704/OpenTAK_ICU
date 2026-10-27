@@ -125,6 +125,10 @@
     <string name="atak_ssl_summary">Disable for TCP</string>
     <string name="video_preferences">Video Preferences</string>
     <string name="stream_preferences">Streaming Settings</string>
+    <string name="settings_summary_off">Off</string>
+    <string name="settings_summary_not_set">Not set</string>
+    <string name="settings_summary_kbps">%1$s kb/s</string>
+    <string name="settings_summary_fps">%1$s fps</string>
     <string name="audio_preferences">Audio Settings</string>
     <string name="self_signed_cert">Server uses Self-Signed Certificate</string>
     <string name="test_certificates">Test Certificates</string>

@@ -16,12 +16,14 @@
             android:dependency="send_cot" />
         <EditTextPreference
             android:key="atak_address"
+            app:useSimpleSummaryProvider="true"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="@string/atak_address"
             android:dependency="send_cot" />
         <EditTextPreference
             android:key="atak_port"
+            app:useSimpleSummaryProvider="true"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:defaultValue="8088"
@@ -35,6 +37,7 @@
             android:dependency="send_cot" />
         <EditTextPreference
             android:key="atak_username"
+            app:useSimpleSummaryProvider="true"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="@string/atak_username"
