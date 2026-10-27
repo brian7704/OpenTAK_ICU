@@ -220,6 +220,7 @@
     <string name="import_btn_skip">Skip</string>
     <string name="import_choose_option">Choose Import or Skip to continue</string>
     <string name="import_skipped">Import skipped, settings were not changed</string>
+    <string name="import_nothing_saved">No valid settings to import, nothing was changed</string>
     <string name="import_label_format">%1$s: %2$s</string>
     <string name="import_rejected_header">Ignored (unknown or invalid):</string>
     <string name="import_resolution_fallback">%1$s not supported by this camera, using %2$s</string>

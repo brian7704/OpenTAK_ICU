@@ -18,7 +18,7 @@ import io.opentakserver.opentakicu.contants.Preferences;
  */
 public final class ImportSchema {
 
-    public enum Type { STRING, PATH, BOOLEAN, ENUM, INT_RANGE, RESOLUTION }
+    public enum Type { STRING, HOST, PATH, BOOLEAN, ENUM, INT_RANGE, RESOLUTION }
 
     public static final class Entry {
         public final String key;
@@ -60,6 +60,7 @@ public final class ImportSchema {
         public final Map<String, String> rejected = new LinkedHashMap<>();
     }
 
+    private static final Pattern WHITESPACE = Pattern.compile("\\s");
     private static final Pattern RESOLUTION_PATTERN = Pattern.compile("^\\s*(\\d{2,5})\\s*[xX×]\\s*(\\d{2,5})\\s*$");
 
     private static final Map<String, Entry> ENTRIES = new LinkedHashMap<>();
@@ -68,13 +69,13 @@ public final class ImportSchema {
         // Stream settings
         add(new Entry(Preferences.STREAM_VIDEO, Type.BOOLEAN, null, 0, 0));
         add(new Entry(Preferences.STREAM_PROTOCOL, Type.ENUM, Arrays.asList("rtsp", "rtsps", "rtmp", "rtmps", "srt", "udp"), 0, 0));
-        add(new Entry(Preferences.STREAM_ADDRESS, Type.STRING, null, 0, 0));
+        add(new Entry(Preferences.STREAM_ADDRESS, Type.HOST, null, 0, 0));
         add(new Entry(Preferences.STREAM_PORT, Type.INT_RANGE, null, 1, 65535));
         add(new Entry(Preferences.STREAM_PATH, Type.PATH, null, 0, 0));
         add(new Entry(Preferences.STREAM_USERNAME, Type.STRING, null, 0, 0));
         add(new Entry(Preferences.STREAM_PASSWORD, Type.STRING, null, 0, 0));
-        // Video settings
-        add(new Entry(Preferences.VIDEO_SOURCE, Type.ENUM, Arrays.asList(Preferences.VIDEO_SOURCE_DEFAULT, Preferences.VIDEO_SOURCE_USB, Preferences.VIDEO_SOURCE_SCREEN), 0, 0));
+        // Video settings. Screen streaming needs a MediaProjection grant, so it cannot be imported.
+        add(new Entry(Preferences.VIDEO_SOURCE, Type.ENUM, Arrays.asList(Preferences.VIDEO_SOURCE_DEFAULT, Preferences.VIDEO_SOURCE_USB), 0, 0));
         add(new Entry(Preferences.VIDEO_RESOLUTION, Type.RESOLUTION, null, 0, 0));
         add(new Entry(Preferences.VIDEO_BITRATE, Type.INT_RANGE, null, 100, 50000));
         add(new Entry(Preferences.VIDEO_ADAPTIVE_BITRATE, Type.BOOLEAN, null, 0, 0));
@@ -144,6 +145,9 @@ public final class ImportSchema {
         switch (entry.type) {
             case STRING:
                 return value;
+            case HOST:
+                // An empty address or one with spaces would break the stream URL
+                return value.isEmpty() || WHITESPACE.matcher(value).find() ? null : value;
             case PATH:
                 String path = StreamUrlUtils.normalizePath(value);
                 return path.isEmpty() ? null : path;

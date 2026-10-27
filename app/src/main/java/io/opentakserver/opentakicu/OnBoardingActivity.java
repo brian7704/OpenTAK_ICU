@@ -429,6 +429,7 @@ public class OnBoardingActivity extends AppIntro {
 
     public void saveSettingsFromBundle(Bundle data) {
         SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
+        int saved = 0;
 
         for (String bundleKey : data.keySet()) {
             if (bundleKey.startsWith(DEEPLINK_PREFIX)) {
@@ -438,14 +439,16 @@ public class OnBoardingActivity extends AppIntro {
                 // Switches are read with getBoolean(), so they must be stored as booleans
                 if (value instanceof Boolean) {
                     editor.putBoolean(prefKey, (Boolean) value);
+                    saved++;
                 } else if (value instanceof String) {
                     editor.putString(prefKey, (String) value);
+                    saved++;
                 }
             }
         }
 
         editor.apply();
-        Toast.makeText(this, R.string.settings_updated_success, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, saved > 0 ? R.string.settings_updated_success : R.string.import_nothing_saved, Toast.LENGTH_SHORT).show();
     }
     private boolean needsPermission(String permission) {
         return ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED;

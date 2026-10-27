@@ -72,10 +72,29 @@ public class ImportSchemaTest {
     public void parse_rejectsInvalidValues() {
         ImportSchema.Result result = ImportSchema.parse(params(
                 "protocol", "http", "port", "70000", "fps", "25", "codec", "VP8",
-                "enable_audio", "maybe", "bitrate", "abc", "resolution", "hd", "path", "/"));
+                "enable_audio", "maybe", "bitrate", "abc", "resolution", "hd", "path", "/",
+                "address", "", "video_source", "screen"));
 
         assertTrue(result.accepted.isEmpty());
-        assertEquals(8, result.rejected.size());
+        assertEquals(10, result.rejected.size());
+    }
+
+    @Test
+    public void convert_addressMustBeNonEmptyWithoutSpaces() {
+        ImportSchema.Entry entry = ImportSchema.entry(Preferences.STREAM_ADDRESS);
+        assertEquals("example.com", ImportSchema.convert(entry, " example.com "));
+        assertEquals("192.168.1.10", ImportSchema.convert(entry, "192.168.1.10"));
+        assertEquals(null, ImportSchema.convert(entry, ""));
+        assertEquals(null, ImportSchema.convert(entry, "   "));
+        assertEquals(null, ImportSchema.convert(entry, "exa mple.com"));
+    }
+
+    @Test
+    public void convert_videoSourceExcludesScreen() {
+        ImportSchema.Entry entry = ImportSchema.entry(Preferences.VIDEO_SOURCE);
+        assertEquals("camera2", ImportSchema.convert(entry, "camera2"));
+        assertEquals("usb", ImportSchema.convert(entry, "usb"));
+        assertEquals(null, ImportSchema.convert(entry, "screen"));
     }
 
     @Test
