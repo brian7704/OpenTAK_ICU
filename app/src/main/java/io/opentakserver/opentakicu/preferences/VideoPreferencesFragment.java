@@ -102,6 +102,19 @@ public class VideoPreferencesFragment extends PreferenceFragmentCompat implement
         resolutions.setEntries(resolutionsList.toArray(new CharSequence[resolutionsList.size()]));
         resolutions.setEntryValues(resolutionsInts.toArray(new CharSequence[resolutionsInts.size()]));
 
+        // The screen source is chosen outside this list, so show it explicitly instead of "Not set"
+        ListPreference videoSource = findPreference(Preferences.VIDEO_SOURCE);
+        if (videoSource != null) {
+            videoSource.setSummaryProvider(preference -> {
+                ListPreference list = (ListPreference) preference;
+                if (Preferences.VIDEO_SOURCE_SCREEN.equals(list.getValue())) {
+                    return getString(R.string.screen);
+                }
+                CharSequence entry = list.getEntry();
+                return entry != null ? entry : getString(R.string.settings_summary_not_set);
+            });
+        }
+
         String video_source = prefs.getString(Preferences.VIDEO_SOURCE, Preferences.VIDEO_SOURCE_DEFAULT);
         if (video_source.equals(Preferences.VIDEO_SOURCE_USB)) {
             findPreference(Preferences.USB_WIDTH).setEnabled(true);

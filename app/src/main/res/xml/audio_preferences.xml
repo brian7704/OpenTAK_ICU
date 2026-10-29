@@ -9,6 +9,7 @@
         <EditTextPreference
             android:defaultValue="128"
             android:key="audio_bitrate"
+            app:useSimpleSummaryProvider="true"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="@string/audio_bitrate"
@@ -16,12 +17,14 @@
         <ListPreference
             android:defaultValue="44100"
             android:key="samplerate"
+            app:useSimpleSummaryProvider="true"
             android:entries="@array/sample_rates"
             android:entryValues="@array/sample_rates"
             android:title="@string/samplerate"
             android:dependency="enable_audio" />
         <ListPreference
             android:key="audio_codec"
+            app:useSimpleSummaryProvider="true"
             android:title="@string/codec"
             android:entries="@array/audio_codecs"
             android:entryValues="@array/audio_codecs" />

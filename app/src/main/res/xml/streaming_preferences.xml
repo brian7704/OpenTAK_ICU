@@ -11,18 +11,20 @@
             android:entries="@array/protocols"
             android:entryValues="@array/protocols"
             android:key="protocol"
+            app:useSimpleSummaryProvider="true"
             android:title="@string/stream_protocol"
             android:dependency="stream_video"/>
         <EditTextPreference
             android:defaultValue="example.com"
             android:key="address"
+            app:useSimpleSummaryProvider="true"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="@string/stream_address"
-            app:summary="IP address or domain name of the server"
             android:dependency="stream_video" />
         <EditTextPreference
             android:key="port"
+            app:useSimpleSummaryProvider="true"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="@string/stream_port"
@@ -30,12 +32,14 @@
             android:dependency="stream_video" />
         <EditTextPreference
             android:key="path"
+            app:useSimpleSummaryProvider="true"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="@string/stream_path"
             android:dependency="stream_video" />
         <EditTextPreference
             android:key="username"
+            app:useSimpleSummaryProvider="true"
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:title="@string/username"
