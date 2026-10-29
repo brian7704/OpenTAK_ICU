@@ -1205,7 +1205,7 @@ public class Camera2Service extends Service implements ConnectChecker,
                     AndroidMuxerRecordController androidMuxerRecordController = new AndroidMuxerRecordController();
                     androidMuxerRecordController.setAudioCodec(AudioCodec.AAC);
 
-                    MediaFormat audioFormat = MediaFormat.createAudioFormat(CodecUtil.AAC_MIME, samplerate, (stereo) ? 2 : 1);
+                    MediaFormat audioFormat = MediaFormat.createAudioFormat("audio/aac", samplerate, (stereo) ? 2 : 1);
                     audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, audio_bitrate * 1000);
                     audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0);
                     audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE,
