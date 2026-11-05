@@ -635,6 +635,12 @@ public class Camera2Fragment extends Fragment
             setZoomRange();
             flashlight.setImageResource(R.drawable.flashlight_off);
         } else if (id == R.id.settingsButton) {
+            // Changing settings reconfigures the encoders, which is not possible during a stream
+            if (camera_service != null
+                    && (camera_service.getStream().isStreaming() || camera_service.getStream().isRecording())) {
+                Toast.makeText(activity, R.string.stop_stream_to_change_settings, Toast.LENGTH_SHORT).show();
+                return;
+            }
             Intent intent = new Intent(activity, SettingsActivity.class);
             startActivity(intent);
         } else if (id == R.id.flashlight) {
