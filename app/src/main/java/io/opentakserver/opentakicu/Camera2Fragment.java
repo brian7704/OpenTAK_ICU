@@ -19,6 +19,7 @@ import android.net.NetworkRequest;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.IBinder;
 import android.util.Log;
 import android.util.Range;
@@ -222,6 +223,7 @@ public class Camera2Fragment extends Fragment
         }
     };
 
+    private boolean networkCallbackRegistered = false;
     private ConnectivityManager.NetworkCallback networkCallback = new ConnectivityManager.NetworkCallback() {
         @Override
         public void onAvailable(@NonNull Network network) {
@@ -231,8 +233,17 @@ public class Camera2Fragment extends Fragment
         @Override
         public void onLost(@NonNull Network network) {
             super.onLost(network);
-            camera_service.stopStream(getString(R.string.network_lost), null);
-            Toast.makeText(activity, "Network lost, stream stopping", Toast.LENGTH_LONG).show();
+            // Runs on the ConnectivityThread and can arrive after the fragment has been detached,
+            // so do not use the fragment's context here.
+            Camera2Service service = camera_service;
+            if (service == null) {
+                Log.d(LOGTAG, "Network lost, no camera service");
+                return;
+            }
+            Context appContext = service.getApplicationContext();
+            service.stopStream(appContext.getString(R.string.network_lost), null);
+            new Handler(Looper.getMainLooper()).post(() ->
+                    Toast.makeText(appContext, "Network lost, stream stopping", Toast.LENGTH_LONG).show());
         }
 
         @Override
@@ -315,6 +326,7 @@ public class Camera2Fragment extends Fragment
 
         ConnectivityManager connectivityManager = activity.getSystemService(ConnectivityManager.class);
         connectivityManager.requestNetwork(networkRequest, networkCallback);
+        networkCallbackRegistered = true;
     }
 
     private void setZoomRange() {
@@ -364,6 +376,14 @@ public class Camera2Fragment extends Fragment
     public void onDestroy() {
         super.onDestroy();
         Log.d(LOGTAG, "onDestroy");
+        if (networkCallbackRegistered) {
+            try {
+                activity.getSystemService(ConnectivityManager.class).unregisterNetworkCallback(networkCallback);
+            } catch (IllegalArgumentException e) {
+                Log.w(LOGTAG, "Network callback was not registered", e);
+            }
+            networkCallbackRegistered = false;
+        }
         if (camera_service != null) {
             camera_service.stopPreview();
             camera_service.getStream().release();
