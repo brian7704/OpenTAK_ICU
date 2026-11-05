@@ -220,6 +220,8 @@ public class Camera2Service extends Service implements ConnectChecker,
     };
     // True only while startStream() is preparing encoders for an imminent stream start.
     private boolean preparingStreamStart = false;
+    // Set when a setting changes while streaming or recording; applied once both have stopped
+    private boolean settingsChangePending = false;
 
     private File folder;
     private String currentDateAndTime;
@@ -1184,8 +1186,28 @@ public class Camera2Service extends Service implements ConnectChecker,
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
         Log.d(LOGTAG, "onSharedPreferenceChanged");
-        if (s != null && !s.equals(Preferences.TEXT_OVERLAY))
-            getSettings();
+        if (s == null || s.equals(Preferences.TEXT_OVERLAY))
+            return;
+
+        // The encoders cannot be prepared again while streaming or recording, RootEncoder throws
+        // IllegalStateException. Apply the change after the stream and recording have stopped.
+        if (getStream().isStreaming() || getStream().isRecording()) {
+            Log.d(LOGTAG, "Setting " + s + " changed while streaming, applying after stop");
+            settingsChangePending = true;
+            return;
+        }
+        getSettings();
+    }
+
+    private void applyPendingSettings() {
+        // stopStream() can be called from a network callback thread, so apply on the main thread
+        new Handler(Looper.getMainLooper()).post(() -> {
+            if (settingsChangePending && !getStream().isStreaming() && !getStream().isRecording()) {
+                settingsChangePending = false;
+                Log.d(LOGTAG, "Applying settings changed during the stream");
+                getSettings();
+            }
+        });
     }
 
     private void startRecording() {
@@ -1251,6 +1273,7 @@ public class Camera2Service extends Service implements ConnectChecker,
                     "file ".concat(currentDateAndTime).concat(".mp4 saved in ").concat(folder.getAbsolutePath()),
                     Toast.LENGTH_SHORT).show();
         }
+        applyPendingSettings();
     }
 
     public void startStream() {
