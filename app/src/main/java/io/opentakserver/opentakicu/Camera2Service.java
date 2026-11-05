@@ -889,6 +889,10 @@ public class Camera2Service extends Service implements ConnectChecker,
 
         if (Objects.equals(codec, VideoCodec.H265.name()))
             getStream().setVideoCodec(VideoCodec.H265);
+        else if (Objects.equals(codec, VideoCodec.VP8.name()) && (protocol.startsWith("rtsp") || protocol.startsWith("rtmp")))
+            getStream().setVideoCodec(VideoCodec.VP8);
+        else if (Objects.equals(codec, VideoCodec.VP9.name()) && (protocol.startsWith("rtsp") || protocol.startsWith("rtmp")))
+            getStream().setVideoCodec(VideoCodec.VP9);
         else if (Objects.equals(codec, VideoCodec.AV1.name()) && !protocol.equals("udp") && !protocol.equals("srt"))
             getStream().setVideoCodec(VideoCodec.AV1);
         else {
@@ -901,7 +905,11 @@ public class Camera2Service extends Service implements ConnectChecker,
         } else if (audio_codec.equals(AudioCodec.OPUS.name()) && !protocol.startsWith("rtmp")) {
             getStream().setAudioCodec(AudioCodec.OPUS);
             Log.d(LOGTAG, "Set audio codec to OPUS");
-        } else {
+        } else if (audio_codec.equals(AudioCodec.HE_AAC.name())) {
+            getStream().setAudioCodec(AudioCodec.HE_AAC);
+            Log.d(LOGTAG, "Set audio codec to HE-AAC");
+        }
+        else {
             // Fall back to AAC since all streaming protocol support it
             getStream().setAudioCodec(AudioCodec.AAC);
             Log.d(LOGTAG, "Set audio codec to AAC");

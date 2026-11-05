@@ -37,6 +37,7 @@
             android:key="codec"
             app:useSimpleSummaryProvider="true"
             android:title="@string/codec"
+            app:defaultValue="H264"
             android:entries="@array/codecs"
             android:entryValues="@array/codecs" />
         <SwitchPreference

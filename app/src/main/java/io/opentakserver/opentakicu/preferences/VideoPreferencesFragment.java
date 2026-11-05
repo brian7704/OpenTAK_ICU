@@ -144,6 +144,8 @@ public class VideoPreferencesFragment extends PreferenceFragmentCompat implement
 
         if (!protocol.equals("srt") && !protocol.equals("udp")) {
             codecs.add(VideoCodec.AV1.name());
+            codecs.add(VideoCodec.VP8.name());
+            codecs.add(VideoCodec.VP9.name());
         }
 
         ListPreference video_codecs = findPreference(Preferences.VIDEO_CODEC);

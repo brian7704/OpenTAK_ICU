@@ -45,7 +45,7 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
             samplerates.add("16000");
             samplerates.add("24000");
             samplerates.add("48000");
-        } else if (codec.equals(AudioCodec.AAC.name())) {
+        } else if (codec.equals(AudioCodec.AAC.name()) || codec.equals(AudioCodec.HE_AAC.name())) {
             Log.d(LOGTAG, "AAC");
             samplerates.add("8000");
             samplerates.add("11025");
@@ -73,16 +73,20 @@ public class AudioPreferencesFragment extends PreferenceFragmentCompat implement
             codecs.add(AudioCodec.OPUS.name());
             codecs.add(AudioCodec.AAC.name());
             codecs.add(AudioCodec.G711.name());
+            codecs.add(AudioCodec.HE_AAC.name());
         } else if (protocol.startsWith("rtmp")) {
             codecs.add(AudioCodec.AAC.name());
             codecs.add(AudioCodec.G711.name());
+            codecs.add(AudioCodec.HE_AAC.name());
         } else if (protocol.equals("srt") || protocol.equals("udp")){
             codecs.add(AudioCodec.OPUS.name());
             codecs.add(AudioCodec.AAC.name());
+            codecs.add(AudioCodec.HE_AAC.name());
         } else {
             codecs.add(AudioCodec.OPUS.name());
             codecs.add(AudioCodec.AAC.name());
             codecs.add(AudioCodec.G711.name());
+            codecs.add(AudioCodec.HE_AAC.name());
         }
 
         codec.setEntries(codecs.toArray(new CharSequence[codecs.size()]));
