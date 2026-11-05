@@ -21,6 +21,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.preference.PreferenceManager;
 
+import com.pedro.library.base.StreamBase;
+
 import io.opentakserver.opentakicu.contants.Preferences;
 
 public class MainActivity extends AppCompatActivity {
@@ -72,11 +74,27 @@ public class MainActivity extends AppCompatActivity {
 
         Uri data = intent.getData();
         if (data != null && "import".equals(data.getHost())) {
+            // Opening the import finishes this activity, which stops the stream. Ignore the link
+            // while streaming or recording, like the settings button does.
+            if (isStreamingOrRecording()) {
+                Log.d(LOGTAG, "Import link ignored while streaming or recording");
+                Toast.makeText(this, R.string.stop_stream_to_import_settings, Toast.LENGTH_LONG).show();
+                return;
+            }
             Intent onboarding = new Intent(this, OnBoardingActivity.class);
             onboarding.setData(data);
             startActivity(onboarding);
             this.finish();
         }
+    }
+
+    private static boolean isStreamingOrRecording() {
+        Camera2Service service = Camera2Service.observer.getValue();
+        if (service == null) {
+            return false;
+        }
+        StreamBase stream = service.getStream();
+        return stream.isStreaming() || stream.isRecording();
     }
 
     private boolean hasPermissions(Context context, ArrayList<String> permissions) {

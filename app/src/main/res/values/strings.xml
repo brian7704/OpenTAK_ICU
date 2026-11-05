@@ -106,6 +106,7 @@
     <string name="stop_stream">Stop Streaming</string>
     <string name="ready_to_stream">Ready to stream</string>
     <string name="stop_stream_to_change_settings">Stop the stream to change settings</string>
+    <string name="stop_stream_to_import_settings">Stop the stream to import settings</string>
     <string name="saved_photo">Saved photo</string>
     <string name="saved_photo_failed">Failed to save photo</string>
     <string name="connection_failed">Connection Failed</string>
