@@ -226,13 +226,22 @@ public class Camera2Fragment extends Fragment
         @Override
         public void onAvailable(@NonNull Network network) {
             super.onAvailable(network);
+            if (pref.getBoolean(Preferences.STREAM_AUTO_RECONNECT, Preferences.STREAM_AUTO_RECONNECT_DEFAULT)
+                    && camera_service != null) {
+                camera_service.notifyNetworkAvailableForReconnect();
+            }
         }
 
         @Override
         public void onLost(@NonNull Network network) {
             super.onLost(network);
-            camera_service.stopStream(getString(R.string.network_lost), null);
-            Toast.makeText(activity, "Network lost, stream stopping", Toast.LENGTH_LONG).show();
+            if (pref.getBoolean(Preferences.STREAM_AUTO_RECONNECT, Preferences.STREAM_AUTO_RECONNECT_DEFAULT)) {
+                return;
+            }
+            if (camera_service != null) {
+                camera_service.stopStream(getString(R.string.network_lost), null);
+                Toast.makeText(activity, "Network lost, stream stopping", Toast.LENGTH_LONG).show();
+            }
         }
 
         @Override

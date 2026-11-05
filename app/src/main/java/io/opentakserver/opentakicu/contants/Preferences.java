@@ -26,6 +26,8 @@ public class Preferences {
     public static final String STREAM_PASSWORD_DEFAULT = "";
     public static final String STREAM_USE_TCP = "tcp";
     public static final boolean STREAM_USE_TCP_DEFAULT = false;
+    public static final String STREAM_AUTO_RECONNECT = "stream_auto_reconnect";
+    public static final boolean STREAM_AUTO_RECONNECT_DEFAULT = false;
     public static final String STREAM_SELF_SIGNED_CERT = "self_signed_cert";
     public static final boolean STREAM_SELF_SIGNED_CERT_DEFAULT = false;
     public static final String STREAM_CERTIFICATE = "certificate";

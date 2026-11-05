@@ -86,6 +86,9 @@
     <string name="record_video">Record video to this device</string>
     <string name="stream">Stream video</string>
     <string name="stream_video">Stream video</string>
+    <string name="stream_auto_reconnect">Auto-restart stream after drops</string>
+    <string name="stream_auto_reconnect_summary">When the stream fails due to network or server disconnect, retry automatically (camera and USB only; not screen capture). Uses more battery and data. Local recording stops if the stream stops.</string>
+    <string name="stream_reconnecting">Reconnecting stream…</string>
     <string name="enable_audio">Enable Audio</string>
     <string name="audio_codec">Audio Codec</string>
     <string name="storage_slide_title">Storage Permission</string>

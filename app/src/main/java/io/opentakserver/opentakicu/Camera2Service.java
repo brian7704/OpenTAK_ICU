@@ -58,6 +58,8 @@ import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Binder;
@@ -66,6 +68,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.util.Size;
@@ -207,6 +210,19 @@ public class Camera2Service extends Service implements ConnectChecker,
 
     private boolean exiting = false;
     private final IBinder binder = new LocalBinder();
+
+    private static final int MAX_AUTO_RECONNECT_ATTEMPTS = 12;
+    private static final long RECONNECT_DELAY_INITIAL_MS = 2000L;
+    private static final long RECONNECT_DELAY_MAX_MS = 60_000L;
+    private static final long RECOVER_FAILURE_DEBOUNCE_MS = 800L;
+    private static final long NO_NETWORK_RETRY_MS = 3000L;
+
+    private final Handler reconnectHandler = new Handler(Looper.getMainLooper());
+    private Runnable reconnectRunnable;
+    private int reconnectAttempt;
+    private boolean userWantsStreamSession;
+    private long lastRecoverableFailureUptime;
+    private long lastReconnectToastUptime;
 
     // Screen capture (MediaProjection) support
     private MediaProjection mediaProjection;
@@ -707,6 +723,7 @@ public class Camera2Service extends Service implements ConnectChecker,
 
     @Override
     public void onDestroy() {
+        cancelAutoReconnect();
         observer.postValue(null);
         unregisterReceiver(receiver);
         preferences.unregisterOnSharedPreferenceChangeListener(this);
@@ -807,7 +824,7 @@ public class Camera2Service extends Service implements ConnectChecker,
     @Override
     public void onConnectionFailed(@NonNull String reason) {
         Log.e(LOGTAG, "Connection failed: ".concat(reason));
-        stopStream(getString(R.string.connection_failed) + ": " + reason, CONNECTION_FAILED);
+        handleRecoverableConnectionFailure(reason);
     }
 
     @Override
@@ -817,6 +834,8 @@ public class Camera2Service extends Service implements ConnectChecker,
 
     @Override
     public void onConnectionSuccess() {
+        reconnectAttempt = 0;
+        cancelAutoReconnect();
         if (adaptive_bitrate) {
             Log.d(LOGTAG, "Setting adaptive bitrate");
             bitrateAdapter = new BitrateAdapter(bitrate -> {
@@ -831,7 +850,10 @@ public class Camera2Service extends Service implements ConnectChecker,
 
     @Override
     public void onDisconnect() {
-
+        Log.d(LOGTAG, "onDisconnect");
+        if (getStream().isStreaming()) {
+            handleRecoverableConnectionFailure("disconnected");
+        }
     }
 
     @Override
@@ -1255,6 +1277,9 @@ public class Camera2Service extends Service implements ConnectChecker,
 
     public void startStream() {
         Log.d(LOGTAG, "startStream");
+        if (stream) {
+            userWantsStreamSession = true;
+        }
         if (!getStream().isStreaming() && !getStream().isRecording()) {
             if (protocol.equals("rtsp") && tcp) {
                 RtspStreamClient rtspStreamClient = (RtspStreamClient) getStream().getStreamClient();
@@ -1411,15 +1436,113 @@ public class Camera2Service extends Service implements ConnectChecker,
 
                 startRecording();
             } else {
+                userWantsStreamSession = false;
                 showNotification(getString(R.string.codec_error), false);
             }
         }
     }
 
-    public void stopStream(String error, String broadcastIntent) {
-        Log.d(LOGTAG, "stopStream " + error);
-        // Stop projection first while source callbacks/threads are still alive, to reduce
-        // dead-thread callback warnings when MediaProjection dispatches onStop.
+    private void cancelAutoReconnect() {
+        if (reconnectRunnable != null) {
+            reconnectHandler.removeCallbacks(reconnectRunnable);
+            reconnectRunnable = null;
+        }
+    }
+
+    private boolean shouldOfferAutoReconnect() {
+        if (!preferences.getBoolean(Preferences.STREAM_AUTO_RECONNECT, Preferences.STREAM_AUTO_RECONNECT_DEFAULT)) {
+            return false;
+        }
+        if (!userWantsStreamSession || exiting) {
+            return false;
+        }
+        if (!stream) {
+            return false;
+        }
+        return !Preferences.VIDEO_SOURCE_SCREEN.equals(videoSource);
+    }
+
+    private boolean hasValidatedNetwork() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) {
+            return false;
+        }
+        android.net.Network network = cm.getActiveNetwork();
+        if (network == null) {
+            return false;
+        }
+        NetworkCapabilities caps = cm.getNetworkCapabilities(network);
+        if (caps == null || !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+            return false;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        }
+        return true;
+    }
+
+    private void maybeShowReconnectToast(long nowUptime) {
+        if (nowUptime - lastReconnectToastUptime < 10_000L) {
+            return;
+        }
+        lastReconnectToastUptime = nowUptime;
+        Toast.makeText(getApplicationContext(), R.string.stream_reconnecting, Toast.LENGTH_SHORT).show();
+    }
+
+    private void scheduleReconnectAttempt(long delayMs) {
+        if (reconnectRunnable != null) {
+            reconnectHandler.removeCallbacks(reconnectRunnable);
+            reconnectRunnable = null;
+        }
+        reconnectRunnable = () -> {
+            reconnectRunnable = null;
+            if (!userWantsStreamSession || exiting) {
+                return;
+            }
+            if (!shouldOfferAutoReconnect()) {
+                return;
+            }
+            if (!hasValidatedNetwork()) {
+                scheduleReconnectAttempt(NO_NETWORK_RETRY_MS);
+                return;
+            }
+            if (!getStream().isStreaming() && !getStream().isRecording()) {
+                startStream();
+            }
+        };
+        reconnectHandler.postDelayed(reconnectRunnable, delayMs);
+    }
+
+    private void handleRecoverableConnectionFailure(String reason) {
+        long now = SystemClock.uptimeMillis();
+        if (now - lastRecoverableFailureUptime < RECOVER_FAILURE_DEBOUNCE_MS) {
+            Log.d(LOGTAG, "Skip duplicate recoverable failure within debounce window");
+            return;
+        }
+        lastRecoverableFailureUptime = now;
+
+        Log.e(LOGTAG, "Recoverable stream failure: " + reason);
+        if (!shouldOfferAutoReconnect()) {
+            stopStream(getString(R.string.connection_failed) + ": " + reason, CONNECTION_FAILED);
+            return;
+        }
+        reconnectAttempt++;
+        if (reconnectAttempt > MAX_AUTO_RECONNECT_ATTEMPTS) {
+            reconnectAttempt = 0;
+            stopStream(getString(R.string.connection_failed) + ": " + reason, CONNECTION_FAILED);
+            return;
+        }
+        cancelAutoReconnect();
+        stopStreamResources();
+        maybeShowReconnectToast(now);
+        showNotification(getString(R.string.stream_reconnecting), false);
+        long delayMs = Math.min(RECONNECT_DELAY_MAX_MS,
+                RECONNECT_DELAY_INITIAL_MS << (reconnectAttempt - 1));
+        scheduleReconnectAttempt(delayMs);
+    }
+
+    private void stopStreamResources() {
+        Log.d(LOGTAG, "stopStreamResources");
         if (mediaProjection != null) {
             try {
                 mediaProjection.unregisterCallback(mediaProjectionCallback);
@@ -1432,13 +1555,16 @@ public class Camera2Service extends Service implements ConnectChecker,
             mediaProjection = null;
         }
 
-        if (getStream().isStreaming())
+        if (getStream().isStreaming()) {
             getStream().stopStream();
+        }
 
         if (tcpClient != null) {
             Log.d(LOGTAG, "Stopping TcpClient");
             tcpClient.setmRun(false);
-            tcpClientThread.interrupt();
+            if (tcpClientThread != null) {
+                tcpClientThread.interrupt();
+            }
         }
 
         if (multicastClient != null) {
@@ -1450,14 +1576,38 @@ public class Camera2Service extends Service implements ConnectChecker,
         sensorManager.unregisterListener(this, accelerometer);
 
         _locManager.removeUpdates(_locListener);
+    }
 
-        // Only show the "Ready to Stream" message if there is no error
+    public void stopStream(String error, String broadcastIntent) {
+        Log.d(LOGTAG, "stopStream " + error);
+        cancelAutoReconnect();
+        userWantsStreamSession = false;
+        reconnectAttempt = 0;
+        stopStreamResources();
+
         if (error != null && broadcastIntent != null) {
             showNotification(error, false);
             getApplicationContext().sendBroadcast(new Intent(broadcastIntent));
         } else {
             showNotification(getString(R.string.ready_to_stream), true);
         }
+    }
+
+    /**
+     * When auto-reconnect is enabled, call from UI when the device regains network so backoff
+     * can be shortened instead of waiting for the next delayed attempt.
+     */
+    public void notifyNetworkAvailableForReconnect() {
+        if (!shouldOfferAutoReconnect()) {
+            return;
+        }
+        if (getStream().isStreaming()) {
+            return;
+        }
+        if (!hasValidatedNetwork()) {
+            return;
+        }
+        scheduleReconnectAttempt(500L);
     }
 
     public void take_photo() {

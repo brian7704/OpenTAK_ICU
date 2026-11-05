@@ -6,6 +6,12 @@
             android:defaultValue="true"
             android:key="stream_video"
             android:title="@string/stream_video" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="stream_auto_reconnect"
+            android:title="@string/stream_auto_reconnect"
+            app:summary="@string/stream_auto_reconnect_summary"
+            android:dependency="stream_video" />
         <ListPreference
             android:defaultValue="1"
             android:entries="@array/protocols"
