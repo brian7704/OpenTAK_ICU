@@ -82,7 +82,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.3.0")
     implementation("androidx.datastore:datastore-preferences-rxjava3:1.3.0")
     implementation("androidx.preference:preference:1.2.1")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.22.4")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.23.0")
     implementation("com.fasterxml.woodstox:woodstox-core:7.3.0")
     implementation("javax.xml.stream:stax-api:1.0-2")
     implementation("com.squareup.okhttp3:okhttp:5.5.1")
