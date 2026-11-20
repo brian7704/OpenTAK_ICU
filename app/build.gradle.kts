@@ -88,7 +88,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:5.5.1")
     implementation("com.sealwu:kscript-tools:1.0.22")
     implementation("com.google.firebase:firebase-analytics:24.0.0")
-    implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
+    implementation(platform("com.google.firebase:firebase-bom:35.2.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.github.topjohnwu.libsu:core:6.0.0")
